@@ -1,0 +1,29 @@
+{
+  "db_url": "mongodb+srv://raise_fund_data:raise_fund_data@raisefunds.kv3wkmj.mongodb.net/raise_fund",
+  "db_url_v1": "mongodb+srv://testing-env:cHJGrKqY63ig9UmD@cluster0.qbrcif7.mongodb.net/",
+  "jwt_token_secret": "seCre3t-DP_|-AsdSEF_R@!se&FunD@rtN%R^&@-enc-kEY",
+  "refresh_jwt_token_secret": "seCre3t-DP_|-AsdGES&O*FunD@rtN%R^&@-enc-kEY",
+  "Winston": {
+    "level": "debug"
+  },
+  "timeZone": "Asia/Calcutta",
+  "aws": {
+    "accessKeyId": "AKIA52XP6Q677DRRTSIJ",
+    "secretAccessKey": "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",
+    "region": "us-east-1",
+    "bucket_name": "raisefund-bucket",
+    "bucket_url": "https://raisefund-bucket.s3.amazonaws.com"
+  },
+  "nodeMail": {
+    "mail": "raisefundstech@gmail.com",
+    "password": "gglqempamiijpmcl",
+    "service": "gmail"
+  },
+  "twilio": {
+    "accountSid": "AC13336faa8854f1c8bb623c9390ad5a26",
+    "authToken": "f4f01f3d732437edb6b8b897fd09a416",
+    "from":"+13159292023",
+    "messagingServiceSid": "MGc36e1d3d965ee9a5c644aa6b6fa39bc3"
+  },
+  "fcmKey": "AAAAc1gQklI:APA91bHypiAZG9QnfYtaTeHrtud_PbIX5cqID2BhmQfNMxxwifekXgI0I8JnWgtzLX5P4EWp4vwjMPjPymKbu10vVUXg1tgOhBb6MUCZPeB-Vie035BchvR5GrP40wDC3ktsrOl8CI67"
+}
