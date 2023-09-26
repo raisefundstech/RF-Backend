@@ -3,7 +3,7 @@ import mongoose, { ConnectOptions } from 'mongoose'
 import express from 'express'
 import autoIncrement from 'mongoose-auto-increment'
 const mongooseConnection = express()
-const dbUrl: any = config.get('db_url_v1')
+const dbUrl: any = config.get('db_url')
 
 mongoose.set('strictQuery', true);
 let connection = mongoose.createConnection(dbUrl,
