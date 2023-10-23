@@ -130,8 +130,8 @@ export const getVolunteerByWorkSpace = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any
     try {
-        response = await userModel.find({ workSpaceId: ObjectId(req.params.id), isActive: true }, { otp: 0, otpExpireTime: 0, device_token: 0, loginType: 0 }).sort({ createdAt: -1 });
-
+        console.log("logging info"+" "+req.params);
+        response = await userModel.find({ workSpaceId: ObjectId(req.params.id), isActive: true }, { countryOfOrigin:0, createdAt:0, updatedAt:0,yearOfEducationCompletion:0, YearOfCameToUSA:0, otp: 0, otpExpireTime: 0, device_token: 0, latitude:0, longitude:0, loginType: 0 }).sort({ createdAt: -1 });
         if (response) return res.status(200).json(new apiResponse(200, responseMessage.getDataSuccess('user'), response))
         else return res.status(400).json(new apiResponse(400, responseMessage.getDataNotFound('user'), {}))
     } catch (error) {

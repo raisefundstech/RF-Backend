@@ -1,4 +1,3 @@
-import async from 'async'
 import { reqInfo } from '../../helpers/winston_logger'
 import { apiResponse, userStatus } from '../../common'
 import { Request, Response } from 'express'

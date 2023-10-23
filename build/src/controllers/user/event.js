@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.addVolunteerToEvent = exports.getVolunteerByEvent = exports.getAllOpenMyEventList = exports.addEventAttendance = exports.getVolunteerByEventAttendance = exports.getAttendanceBeforeEvents = exports.deleteRequestEvent = exports.changeEventRequestStatus = exports.get_event_pagination_for_volunteers = exports.applyOnEvent = exports.get_event_pagination = exports.deleteEvent = exports.getEventById = exports.updateEvent = exports.createEvent = exports.getEvents = void 0;
+exports.fetchVolunteerAppliedForEvent = exports.addVolunteerToEvent = exports.getVolunteerByEvent = exports.getAllOpenMyEventList = exports.addEventAttendance = exports.getVolunteerByEventAttendance = exports.getAttendanceBeforeEvents = exports.deleteRequestEvent = exports.changeEventRequestStatus = exports.get_event_pagination_for_volunteers = exports.applyOnEvent = exports.get_event_pagination = exports.deleteEvent = exports.getEventById = exports.updateEvent = exports.createEvent = exports.getEvents = void 0;
 const async_1 = __importDefault(require("async"));
 const winston_logger_1 = require("../../helpers/winston_logger");
 const common_1 = require("../../common");
@@ -94,8 +94,8 @@ const getEvents = async (req, res) => {
                     workSpaceId: 1,
                     name: 1,
                     address: 1,
-                    latitude: 1,
-                    longitude: 1,
+                    // latitude: 1,
+                    // longitude: 1,
                     date: 1,
                     startTime: 1,
                     endTime: 1,
@@ -106,9 +106,9 @@ const getEvents = async (req, res) => {
                     createdBy: 1,
                     isEventOwn: {
                         $cond: [{ $eq: ['$createdBy', ObjectId(user._id)] }, true, false]
-                    },
-                    createdAt: 1,
-                    updatedAt: 1,
+                    }
+                    // createdAt: 1,
+                    // updatedAt: 1,
                 }
             }
         ]);
@@ -320,8 +320,8 @@ const get_event_pagination = async (req, res) => {
                             workSpaceId: 1,
                             name: 1,
                             address: 1,
-                            latitude: 1,
-                            longitude: 1,
+                            // latitude: 1,
+                            // longitude: 1,
                             date: 1,
                             startTime: 1,
                             endTime: 1,
@@ -352,8 +352,8 @@ const get_event_pagination = async (req, res) => {
                                     }
                                 }
                             },
-                            createdAt: 1,
-                            updatedAt: 1,
+                            // createdAt: 1,
+                            // updatedAt: 1,
                         }
                     },
                     { $sort: { createdAt: -1 } },
@@ -561,7 +561,7 @@ const changeEventRequestStatus = async (req, res) => {
             getEvent = await database_1.eventModel.findOne({ _id: ObjectId(body[0].id) });
             let responseData = getEvent?.volunteerRequest.filter(data => data.requestStatus === "APPROVED");
             if (getEvent?.volunteerSize < (responseData.length + body.length)) {
-                return res.status(400).json(new common_1.apiResponse(400, `You can not approve volunteer because only ${getEvent?.volunteerSize} volunteer will be participate in this event`, {}));
+                return res.status(400).json(new common_1.apiResponse(400, `You can not approve volunteers because only ${getEvent?.volunteerSize} volunteer will be participate in this event`, {}));
             }
         }
         for (const item of body) {
@@ -1210,4 +1210,9 @@ const addVolunteerToEvent = async (req, res) => {
     }
 };
 exports.addVolunteerToEvent = addVolunteerToEvent;
+const fetchVolunteerAppliedForEvent = async (req, res) => {
+    (0, winston_logger_1.reqInfo)(req);
+    const event_id = req.header('event_id');
+};
+exports.fetchVolunteerAppliedForEvent = fetchVolunteerAppliedForEvent;
 //# sourceMappingURL=event.js.map

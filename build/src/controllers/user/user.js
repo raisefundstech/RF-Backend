@@ -78,6 +78,7 @@ exports.updateProfile = updateProfile;
 const switchWorkSpace = async (req, res) => {
     (0, winston_logger_1.reqInfo)(req);
     let user = req.header('user'), response, body = req.body;
+    console.log(req);
     try {
         let findWorkSpace = await database_1.workSpaceModel.findOne({ _id: ObjectId(req.params.id), isActive: true });
         if (findWorkSpace) {

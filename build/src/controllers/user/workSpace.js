@@ -150,7 +150,8 @@ const getVolunteerByWorkSpace = async (req, res) => {
     (0, winston_logger_1.reqInfo)(req);
     let user = req.header('user'), response;
     try {
-        response = await database_1.userModel.find({ workSpaceId: ObjectId(req.params.id), isActive: true }, { otp: 0, otpExpireTime: 0, device_token: 0, loginType: 0 }).sort({ createdAt: -1 });
+        console.log("logging info" + " " + req.params);
+        response = await database_1.userModel.find({ workSpaceId: ObjectId(req.params.id), isActive: true }, { countryOfOrigin: 0, createdAt: 0, updatedAt: 0, yearOfEducationCompletion: 0, YearOfCameToUSA: 0, otp: 0, otpExpireTime: 0, device_token: 0, latitude: 0, longitude: 0, loginType: 0 }).sort({ createdAt: -1 });
         if (response)
             return res.status(200).json(new common_1.apiResponse(200, helpers_1.responseMessage.getDataSuccess('user'), response));
         else

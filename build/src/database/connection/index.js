@@ -11,8 +11,9 @@ const mongoose_auto_increment_1 = __importDefault(require("mongoose-auto-increme
 exports.autoIncrement = mongoose_auto_increment_1.default;
 const mongooseConnection = (0, express_1.default)();
 exports.mongooseConnection = mongooseConnection;
-const dbUrl = config_1.default.get('db_url');
+const dbUrl = config_1.default.get('db_url_dev');
 mongoose_1.default.set('strictQuery', true);
+// console.log(dbUrl);
 let connection = mongoose_1.default.createConnection(dbUrl, {
     useNewUrlParser: true,
     // useCreateIndex: true,
