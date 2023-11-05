@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createRoom = void 0;
+exports.getCurrentUnixTimestamp = exports.createRoom = void 0;
 const cron_1 = require("cron");
 const winston_logger_1 = require("./winston_logger");
 const database_1 = require("../database");
@@ -66,4 +66,9 @@ exports.createRoom = new cron_1.CronJob('* * * * *', async () => {
     }
     winston_logger_1.logger.info('Create Room Cron Job Finished');
 });
+// Returns the current timestamp in Unix format 
+function getCurrentUnixTimestamp() {
+    return Math.floor(Date.now() / 1000); // returning the date in foramt of seconds
+}
+exports.getCurrentUnixTimestamp = getCurrentUnixTimestamp;
 //# sourceMappingURL=cron.js.map

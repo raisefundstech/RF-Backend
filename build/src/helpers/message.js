@@ -32,7 +32,7 @@ async function sendSMS(receiver_info) {
             const input = {
                 ApplicationId: "d3fb72c2dfab496ba9565cf2d1c8770a",
                 SendOTPMessageRequestParameters: {
-                    AllowedAttempts: Number(3),
+                    AllowedAttempts: Number(5),
                     BrandName: "Raise Funds",
                     Channel: "SMS",
                     CodeLength: Number(6),
@@ -74,7 +74,7 @@ async function validOTP(otp_info) {
             resolve(response);
         }
         catch (error) {
-            console.error('Error sending email:', error);
+            console.error('Error sending otp:', error);
             reject(error);
         }
     });

@@ -64,6 +64,9 @@ router.put('/meetOurTeam/update', validation_1.ourTeamValidation.updateOurTeam, 
 router.get('/room/get/:id', validation_1.eventValidation.by_id, controllers_1.userController.get_room_v1);
 // -------  Message Routes -------
 router.get('/message', controllers_1.userController.get_message);
+// ------ Deletion ------------
 router.delete('/deleteUser', controllers_1.userController.deleteUser);
+router.delete('/logout', controllers_1.userController.logoutUser);
+// 
 exports.userRouter = router;
 //# sourceMappingURL=user.js.map

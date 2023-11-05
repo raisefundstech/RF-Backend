@@ -2,8 +2,9 @@ import { reqInfo } from '../../helpers/winston_logger'
 import { apiResponse, userStatus } from '../../common'
 import { Request, Response } from 'express'
 import { responseMessage } from '../../helpers'
-import { userModel, workSpaceModel } from '../../database'
+import { userModel, userSessionModel, workSpaceModel } from '../../database'
 import { generateVolunteerCode } from '../../helpers/generateCode'
+import { deleteSession } from '../../helpers/jwt'
 
 const ObjectId = require('mongoose').Types.ObjectId
 
@@ -220,4 +221,19 @@ export const deleteUser = async (req: Request, res: Response) => {
     } catch (error) {
         return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, error));
     }
+}
+
+export const logoutUser = async (req: Request, res: Response) => {
+    reqInfo(req);
+    let user: any = req.header('user');
+    try {
+        const user_session = await deleteSession(user._id);
+        if (user_session.deletedCount > 0) {
+            return res.status(200).json(new apiResponse(200, responseMessage?.logoutSuccess, {}));
+        } else {
+            return res.status(404).json(new apiResponse(501, responseMessage?.logoutFailure('User'), {}));
+        }
+    } catch (error) {
+        return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, error.message));
+    }      
 }

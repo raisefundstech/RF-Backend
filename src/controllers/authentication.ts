@@ -9,6 +9,9 @@ import { responseMessage } from '../helpers'
 import { generateVolunteerCode } from '../helpers/generateCode'
 import { sendEmail } from '../helpers/email'
 import { sendSMS,validOTP } from '../helpers/message'
+import { logoutUser } from './user'
+import { deleteSession } from '../helpers/jwt'
+import { getCurrentUnixTimestamp } from '../helpers/cron'
 const twilio: any = config.get("twilio");
 const client = require('twilio')(twilio.accountSid, twilio.authToken);
 const ObjectId = require('mongoose').Types.ObjectId
@@ -150,7 +153,19 @@ export const otpVerification = async (req: Request, res: Response) => {
         if (new Date(findUser.otpExpireTime).getTime() < new Date().getTime()) return res.status(410).json(new apiResponse(410, responseMessage?.expireOTP, {}))
 
         if (findUser) {
-            let response = await userModel.findOneAndUpdate({ otp: body.otp, mobileNumber: body.mobileNumber, isActive: true }, { otp: null, otpExpireTime: null, $addToSet: { device_token: body?.device_token } }, { new: true })
+
+            let isLoggedIn = await userSessionModel.findOne({createdBy: ObjectId(findUser._doc._id.toString())})
+            let logout_response = null;
+            
+            if(isLoggedIn) {
+                var delete_session = await deleteSession(findUser._doc._id);
+                console.log(delete_session);
+                logout_response = deleteSession != null ? responseMessage?.logoutDevices : '';
+            }
+
+            let device_token = getCurrentUnixTimestamp();
+
+            let response = await userModel.findOneAndUpdate({ otp: body.otp, mobileNumber: body.mobileNumber, isActive: true }, { otp: null, otpExpireTime: null, $addToSet: { device_token: device_token } }, { new: true })
 
             const token = jwt.sign({
                 _id: response._id,
@@ -167,6 +182,7 @@ export const otpVerification = async (req: Request, res: Response) => {
 
             await new userSessionModel({
                 createdBy: response._id,
+                device_token: device_token,
                 refresh_token
             }).save();
 
@@ -179,8 +195,9 @@ export const otpVerification = async (req: Request, res: Response) => {
                 email: response?.email,
                 workSpaceId: response?.workSpaceId,
                 tags: response?.tags,
-                image: response?.image,
-                token,
+                logout: logout_response,
+                device_token: device_token,
+                token
             }
             return res.status(200).json(new apiResponse(200, responseMessage?.OTPverified, responseIs))
         } else {
@@ -219,6 +236,7 @@ export const sendOTP = async (req: Request, res: Response) => {
   }
 };
 
+// The verify OTP 
 export const verifyOTP = async (req: Request, res: Response) => {
     try {
       const body = req.body;    // You should define the 'sendSMS' function to send the OTP via SMS

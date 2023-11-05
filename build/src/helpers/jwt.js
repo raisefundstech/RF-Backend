@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.userJWT = void 0;
+exports.deleteSession = exports.userJWT = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const config_1 = __importDefault(require("config"));
 const database_1 = require("../database");
@@ -13,11 +13,13 @@ const response_1 = require("./response");
 const ObjectId = mongoose_1.default.Types.ObjectId;
 const jwt_token_secret = config_1.default.get('jwt_token_secret');
 const userJWT = async (req, res, next) => {
+    // console.log(req);
     let { authorization } = req.headers, result;
-    if (authorization) {
+    let device_token = req.headers["device-token"];
+    if (authorization && device_token) {
         try {
             let isVerifyToken = jsonwebtoken_1.default.verify(authorization, jwt_token_secret);
-            result = await database_1.userModel.findOne({ _id: new ObjectId(isVerifyToken?._id), isActive: true });
+            result = await database_1.userSessionModel.findOne({ createdBy: new ObjectId(isVerifyToken?._id), isActive: true, device_token: device_token });
             if (result?.isActive == true) {
                 req.headers.user = isVerifyToken;
                 return next();
@@ -38,4 +40,18 @@ const userJWT = async (req, res, next) => {
     }
 };
 exports.userJWT = userJWT;
+const deleteSession = async function (userId) {
+    try {
+        const user_session = await database_1.userSessionModel.deleteMany({
+            createdBy: new ObjectId(userId),
+            isActive: true,
+        });
+        return user_session;
+    }
+    catch (error) {
+        console.error('Unable to delete the user session, please try again', error);
+        throw error;
+    }
+};
+exports.deleteSession = deleteSession;
 //# sourceMappingURL=jwt.js.map

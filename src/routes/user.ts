@@ -71,6 +71,8 @@ router.get('/room/get/:id', eventValidation.by_id, userController.get_room_v1)
 // -------  Message Routes -------
 router.get('/message', userController.get_message)
 
+// ------ Deletion ------------
 router.delete('/deleteUser', userController.deleteUser)
-
+router.delete('/logout',userController.logoutUser)
+// 
 export const userRouter = router;

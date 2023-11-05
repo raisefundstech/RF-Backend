@@ -70,7 +70,7 @@ export async function validOTP(otp_info) : Promise<any> {
               const response = await client.send(command);
               resolve(response);
         } catch (error) {
-          console.error('Error sending email:', error);
+          console.error('Error sending otp:', error);
           reject(error);
         }
     });

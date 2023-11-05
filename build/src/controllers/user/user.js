@@ -1,11 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteUser = exports.addVolunteer = exports.updateVolunteerPosition = exports.getVolunteers = exports.switchWorkSpace = exports.updateProfile = exports.getProfile = void 0;
+exports.logoutUser = exports.deleteUser = exports.addVolunteer = exports.updateVolunteerPosition = exports.getVolunteers = exports.switchWorkSpace = exports.updateProfile = exports.getProfile = void 0;
 const winston_logger_1 = require("../../helpers/winston_logger");
 const common_1 = require("../../common");
 const helpers_1 = require("../../helpers");
 const database_1 = require("../../database");
 const generateCode_1 = require("../../helpers/generateCode");
+const jwt_1 = require("../../helpers/jwt");
 const ObjectId = require('mongoose').Types.ObjectId;
 const getProfile = async (req, res) => {
     (0, winston_logger_1.reqInfo)(req);
@@ -236,4 +237,21 @@ const deleteUser = async (req, res) => {
     }
 };
 exports.deleteUser = deleteUser;
+const logoutUser = async (req, res) => {
+    (0, winston_logger_1.reqInfo)(req);
+    let user = req.header('user');
+    try {
+        const user_session = await (0, jwt_1.deleteSession)(user._id);
+        if (user_session.deletedCount > 0) {
+            return res.status(200).json(new common_1.apiResponse(200, helpers_1.responseMessage?.logoutSuccess, {}));
+        }
+        else {
+            return res.status(404).json(new common_1.apiResponse(501, helpers_1.responseMessage?.logoutFailure('User'), {}));
+        }
+    }
+    catch (error) {
+        return res.status(500).json(new common_1.apiResponse(500, helpers_1.responseMessage?.internalServerError, error.message));
+    }
+};
+exports.logoutUser = logoutUser;
 //# sourceMappingURL=user.js.map
