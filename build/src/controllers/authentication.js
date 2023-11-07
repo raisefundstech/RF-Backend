@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.userLogout = exports.resendOTP = exports.otpVerification = exports.userSignIn = exports.userSignUp = void 0;
+exports.userLogout = exports.resendOTP = exports.verifyOTP = exports.sendOTP = exports.otpVerification = exports.userSignIn = exports.userSignUp = void 0;
 const winston_logger_1 = require("../helpers/winston_logger");
 const database_1 = require("../database");
 const common_1 = require("../common");
@@ -12,6 +12,7 @@ const config_1 = __importDefault(require("config"));
 const helpers_1 = require("../helpers");
 const generateCode_1 = require("../helpers/generateCode");
 const email_1 = require("../helpers/email");
+const message_1 = require("../helpers/message");
 const twilio = config_1.default.get("twilio");
 const client = require('twilio')(twilio.accountSid, twilio.authToken);
 const ObjectId = require('mongoose').Types.ObjectId;
@@ -20,10 +21,6 @@ const refresh_jwt_token_secret = config_1.default.get('refresh_jwt_token_secret'
 const userSignUp = async (req, res) => {
     (0, winston_logger_1.reqInfo)(req);
     try {
-        var registrationClosed = false;
-        if (registrationClosed) {
-            throw new Error("Registrations are currently closed, please contact the admin"); // The app doesnt accept any new registrations only the current users will be able to login.
-        }
         let body = req.body, otpFlag = 1, otp = 0;
         let isAlready = await database_1.userModel.findOne({ $or: [{ email: body.email }, { mobileNumber: body.mobileNumber }], isActive: true });
         if (isAlready?.email == body?.email)
@@ -60,31 +57,6 @@ const userSignUp = async (req, res) => {
             })
                 .then((message) => console.log(message.sid))
                 .catch(error => console.log(error));
-            // const token = jwt.sign({
-            //     _id: response._id,
-            //     workSpaceId: response.workSpaceId,
-            //     type: response.userType,
-            //     status: "Login",
-            //     generatedOn: (new Date().getTime())
-            // }, jwt_token_secret);
-            // const refresh_token = jwt.sign({
-            //     _id: response._id,
-            //     generatedOn: (new Date().getTime())
-            // }, refresh_jwt_token_secret);
-            // await new userSessionModel({
-            //     createdBy: response._id,
-            //     refresh_token
-            // }).save();
-            // let responseIs = {
-            //     userType: response?.userType,
-            //     loginType: response?.loginType,
-            //     _id: response?._id,
-            //     firstName: response?.firstName,
-            //     lastName: response?.lastName,
-            //     email: response?.email,
-            //     workSpaceId: response?.workSpaceId,
-            //     token
-            // }
             return res.status(200).json(new common_1.apiResponse(200, `OTP has been sent to this ${body.mobileNumber}`, {}));
         }
         else {
@@ -215,6 +187,59 @@ const otpVerification = async (req, res) => {
     }
 };
 exports.otpVerification = otpVerification;
+const sendOTP = async (req, res) => {
+    try {
+        const body = req.body; // You should define the 'sendSMS' function to send the OTP via SMS
+        var mobileNumber = body.mobileNumber;
+        var receiver = {
+            "mobileNumber": mobileNumber
+        };
+        const response = await (0, message_1.sendSMS)(receiver);
+        console.log(response);
+        var sms_response = {
+            ApplicationId: response?.MessageResponse?.ApplicationId,
+            requestId: response?.MessageResponse?.RequestId,
+            deliveryStatusCode: response?.MessageResponse?.Result[mobileNumber]?.StatusCode,
+            deliveryStatus: response?.MessageResponse?.Result[mobileNumber]?.DeliveryStatus,
+            referenceId: response?.referenceId
+        };
+        if (response) {
+            return res.status(200).json(new common_1.apiResponse(200, `OTP has been successfully sent to mobile number ${body.mobileNumber}`, { sms_response }));
+        }
+        else {
+            return res.status(400).json(new common_1.apiResponse(400, 'Failed to send OTP', { response }));
+        }
+    }
+    catch (error) {
+        console.error(error); // Log the error for debugging
+        return res.status(500).json(new common_1.apiResponse(500, 'Internal server error', { error }));
+    }
+};
+exports.sendOTP = sendOTP;
+const verifyOTP = async (req, res) => {
+    try {
+        const body = req.body; // You should define the 'sendSMS' function to send the OTP via SMS
+        var otp_verification_info = {
+            "mobileNumber": body.mobileNumber,
+            "ApplicationId": body.ApplicationId,
+            "otp": body.otp,
+            "referenceId": body.referenceId
+        };
+        const response = await (0, message_1.validOTP)(otp_verification_info);
+        console.log(response);
+        if (response["VerificationResponse"]["Valid"] == true) {
+            return res.status(200).json(new common_1.apiResponse(200, `OTP has been successfully verified`, {}));
+        }
+        else {
+            return res.status(400).json(new common_1.apiResponse(400, 'Invalid OTP please resubmit ', {}));
+        }
+    }
+    catch (error) {
+        console.error(error); // Log the error for debugging
+        return res.status(500).json(new common_1.apiResponse(500, 'Internal server error', { error }));
+    }
+};
+exports.verifyOTP = verifyOTP;
 const resendOTP = async (req, res) => {
     (0, winston_logger_1.reqInfo)(req);
     try {
@@ -256,6 +281,7 @@ const resendOTP = async (req, res) => {
         }
     }
     catch (error) {
+        console.log(error);
         return res.status(500).json(new common_1.apiResponse(500, helpers_1.responseMessage?.internalServerError, error));
     }
 };

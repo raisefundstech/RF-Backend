@@ -9,7 +9,8 @@ router.post('/login', userValidation?.userSignIn, authenticationController?.user
 router.post('/otpVerification', userValidation?.otpVerification, authenticationController?.otpVerification)
 router.post('/resendOTP', userValidation.resendOTP, authenticationController?.resendOTP)
 router.get('/workSpaces', userController.getWorkSpace)
-
+router.post('/sendOTP', userValidation.resendOTP, authenticationController?.sendOTP)
+router.post('/verifyOTP', userValidation.verifyOTP, authenticationController?.verifyOTP)
 // router.get('/addColumn', userController.add_column)
 
 //  ------   Authentication   ------  

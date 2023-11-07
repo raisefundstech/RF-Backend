@@ -19,7 +19,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.volunteerUpdate = exports.otpVerification = exports.resendOTP = exports.userSignIn = exports.userSignUp = void 0;
+exports.volunteerUpdate = exports.verifyOTP = exports.otpVerification = exports.resendOTP = exports.userSignIn = exports.userSignUp = void 0;
 const Joi = __importStar(require("joi"));
 const common_1 = require("../common");
 const mongoose_1 = require("mongoose");
@@ -94,6 +94,23 @@ const otpVerification = async (req, res, next) => {
     });
 };
 exports.otpVerification = otpVerification;
+const verifyOTP = async (req, res, next) => {
+    const schema = Joi.object({
+        mobileNumber: Joi.string().trim().required().error(new Error('mobileNumber is required!')),
+        ApplicationId: Joi.string().trim().required().error(new Error('ApplicationId is required!')),
+        otp: Joi.string().trim().required().error(new Error('otp is required!')),
+        referenceId: Joi.string().trim().required().error(new Error('referenceId is required!')),
+    });
+    schema.validateAsync(req.body)
+        .then(result => {
+        req.body = result;
+        return next();
+    })
+        .catch(error => {
+        res.status(400).json(new common_1.apiResponse(400, error.message, {}));
+    });
+};
+exports.verifyOTP = verifyOTP;
 const volunteerUpdate = async (req, res, next) => {
     const schema = Joi.object({
         id: Joi.string().trim().required().error(new Error('id is required!')),

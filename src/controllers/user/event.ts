@@ -91,8 +91,8 @@ export const getEvents = async (req: Request, res: Response) => {
                     workSpaceId: 1,
                     name: 1,
                     address: 1,
-                    latitude: 1,
-                    longitude: 1,
+                    // latitude: 1,
+                    // longitude: 1,
                     date: 1,
                     startTime: 1,
                     endTime: 1,
@@ -103,9 +103,9 @@ export const getEvents = async (req: Request, res: Response) => {
                     createdBy: 1,
                     isEventOwn: {
                         $cond: [{ $eq: ['$createdBy', ObjectId(user._id)] }, true, false]
-                    },
-                    createdAt: 1,
-                    updatedAt: 1,
+                    }
+                    // createdAt: 1,
+                    // updatedAt: 1,
                 }
             }
         ]);
@@ -305,8 +305,8 @@ export const get_event_pagination = async (req: Request, res: Response) => {
                             workSpaceId: 1,
                             name: 1,
                             address: 1,
-                            latitude: 1,
-                            longitude: 1,
+                            // latitude: 1,
+                            // longitude: 1,
                             date: 1,
                             startTime: 1,
                             endTime: 1,
@@ -337,8 +337,8 @@ export const get_event_pagination = async (req: Request, res: Response) => {
                                     }
                                 }
                             },
-                            createdAt: 1,
-                            updatedAt: 1,
+                            // createdAt: 1,
+                            // updatedAt: 1,
                         }
                     },
                     { $sort: { createdAt: -1 } },
@@ -549,7 +549,7 @@ export const changeEventRequestStatus = async (req: Request, res: Response) => {
             let responseData = getEvent?.volunteerRequest.filter(data => data.requestStatus === "APPROVED");
 
             if (getEvent?.volunteerSize < (responseData.length + body.length)) {
-                return res.status(400).json(new apiResponse(400, `You can not approve volunteer because only ${getEvent?.volunteerSize} volunteer will be participate in this event`, {}))
+                return res.status(400).json(new apiResponse(400, `You can not approve volunteers because only ${getEvent?.volunteerSize} volunteer will be participate in this event`, {}))
             }
         }
 

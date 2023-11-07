@@ -1,5 +1,5 @@
 {
-    "db_url": "mongodb+srv://raise_fund_data:raise_fund_data@raisefunds.kv3wkmj.mongodb.net/raise_fund",
+    "db_url": "mongodb+srv://raise_fund_data:raise_fund_data@cluster0.76zww7p.mongodb.net/",
     "jwt_token_secret": "seCre3t-DP_|-AsdSEF_R@!se&FunD@rtN%R^&@-enc-kEY",
     "refresh_jwt_token_secret": "seCre3t-DP_|-AsdGES&O*FunD@rtN%R^&@-enc-kEY",
     "Winston": {
@@ -11,7 +11,8 @@
       "secretAccessKey": "qKDEfxW3wA1OUX23ZXYfwC/KPkx8S6fco8fUHnVa",
       "region": "us-east-1",
       "bucket_name": "raisefund-bucket",
-      "bucket_url": "https://raisefund-bucket.s3.amazonaws.com"
+      "bucket_url": "https://raisefund-bucket.s3.amazonaws.com",
+      "originNumber" : "+18669846974"
     },
     "nodeMail": {
       "mail": "raisefundstech@gmail.com",

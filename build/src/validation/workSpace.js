@@ -58,6 +58,7 @@ const updateWorkSpace = async (req, res, next) => {
 };
 exports.updateWorkSpace = updateWorkSpace;
 const by_id = async (req, res, next) => {
+    console.log(req.params);
     if (!(0, mongoose_1.isValidObjectId)(req.params.id))
         return res.status(400).json(new common_1.apiResponse(400, helpers_1.responseMessage.invalidId('id'), {}));
     next();

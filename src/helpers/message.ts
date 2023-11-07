@@ -1,0 +1,78 @@
+import config from 'config'
+import { PinpointClient, SendOTPMessageCommand, VerifyOTPMessageCommand} from "@aws-sdk/client-pinpoint";
+
+const aws_config: any = config.get('aws');
+const pinpoint_config = {
+    region: aws_config.region,
+    credentials: {
+        accessKeyId: aws_config.accessKeyId,
+        secretAccessKey: aws_config.secretAccessKey
+    }
+};
+
+const client = new PinpointClient(pinpoint_config);
+
+function generateReferenceId(){
+    // Create a new Date object to represent the current date and time
+    const currentTime = new Date();
+    // Use the getTime() method to get the timestamp in milliseconds
+    const timestampInMilliseconds = currentTime.getTime();
+    // Convert to Unix timestamp in seconds (divide by 1000)
+    const timestampInSeconds = Math.floor(timestampInMilliseconds / 1000);
+    // return the timestamp as string 
+    return String(timestampInSeconds);
+}
+
+export async function sendSMS(receiver_info) : Promise<any> {
+    return new Promise(async (resolve, reject) => {
+        var referenceId = generateReferenceId();
+        try {
+            const input = { // SendOTPMessageRequest
+                ApplicationId: "d3fb72c2dfab496ba9565cf2d1c8770a", // required
+                SendOTPMessageRequestParameters: { // SendOTPMessageRequestParameters
+                  AllowedAttempts: Number(5),
+                  BrandName: "Raise Funds", 
+                  Channel: "SMS", 
+                  CodeLength: Number(6),
+                  DestinationIdentity: receiver_info.mobileNumber, 
+                  Language: "en-US",
+                  OriginationIdentity: aws_config.originNumber, 
+                  ReferenceId: referenceId, 
+                  ValidityPeriod: Number(30),
+                },
+              };
+              const command = new SendOTPMessageCommand(input);
+              const response = await client.send(command);
+              const customResponse = {
+                ...response,
+                referenceId: referenceId,
+              };
+              resolve(customResponse);
+        } catch (error) {
+          console.error('Error sending email:', error);
+          reject(error);
+        }
+    });
+}
+
+export async function validOTP(otp_info) : Promise<any> {
+    return new Promise(async (resolve, reject) => {
+        try {
+            const input = { // VerifyOTPMessageRequest
+                ApplicationId: otp_info.ApplicationId, // required
+                VerifyOTPMessageRequestParameters: { // VerifyOTPMessageRequestParameters
+                  DestinationIdentity: otp_info.mobileNumber, // required
+                  Otp: otp_info.otp, // required
+                  ReferenceId: otp_info.referenceId, // required
+                },
+              };
+              const command = new VerifyOTPMessageCommand(input);
+              const response = await client.send(command);
+              resolve(response);
+        } catch (error) {
+          console.error('Error sending email:', error);
+          reject(error);
+        }
+    });
+}
+

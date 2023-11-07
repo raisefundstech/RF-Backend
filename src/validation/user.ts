@@ -74,6 +74,25 @@ export const otpVerification = async (req: Request, res: Response, next: any) =>
     })
 }
 
+
+export const verifyOTP = async (req: Request, res: Response, next: any) => {
+    const schema = Joi.object({
+      mobileNumber: Joi.string().trim().required().error(new Error('mobileNumber is required!')),
+      ApplicationId: Joi.string().trim().required().error(new Error('ApplicationId is required!')),
+      otp: Joi.string().trim().required().error(new Error('otp is required!')),
+      referenceId: Joi.string().trim().required().error(new Error('referenceId is required!')),
+    });
+  
+    schema.validateAsync(req.body)
+      .then(result => {
+        req.body = result;
+        return next();
+      })
+      .catch(error => {
+        res.status(400).json(new apiResponse(400, error.message, {}));
+      });
+};
+  
 export const volunteerUpdate = async (req: Request, res: Response, next: any) => {
     const schema = Joi.object({
         id: Joi.string().trim().required().error(new Error('id is required!')),

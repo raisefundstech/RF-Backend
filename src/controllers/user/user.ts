@@ -74,6 +74,7 @@ export const updateProfile = async (req: Request, res: Response) => {
 export const switchWorkSpace = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any, body = req.body;
+    // console.log(req);
     try {
         let findWorkSpace = await workSpaceModel.findOne({ _id: ObjectId(req.params.id), isActive: true })
         if (findWorkSpace) {
@@ -85,7 +86,6 @@ export const switchWorkSpace = async (req: Request, res: Response) => {
         }
     } catch (error) {
         console.log(error);
-
         return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, error));
     }
 }
