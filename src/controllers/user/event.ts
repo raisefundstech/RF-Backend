@@ -1197,9 +1197,3 @@ export const addVolunteerToEvent = async (req: Request, res: Response) => {
         return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, error));
     }
 }
-
-export const fetchVolunteerAppliedForEvent = async (req: Request,res: Response) => {
-    reqInfo(req);
-    const event_id = req.header('event_id');
-    
-}
