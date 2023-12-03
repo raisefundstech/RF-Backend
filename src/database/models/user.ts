@@ -28,7 +28,8 @@ const userSchema: any = new mongoose.Schema({
     otpExpireTime: { type: Date, default: null },
     device_token: { type: [{ type: String }], default: [] },
     loginType: { type: Number, default: 0, enum: [0, 1, 2, 3] }, // 0 - custom || 1 - google || 2 - facebook || 3 - apple
-    userType: { type: Number, default: 0, enum: [0, 1, 2] }, // 0 - user || 1 - admin || 2 - manager
+    userType: { type: Number, default: 0, enum: [0, 1, 2] }, // 0 - user || 1 - admin || 2 - super_volunteer
+    userRole: {type: String, default: "NOT_VERIFIED",enum: ["VERIFIED","NOT_VERIFIED","BANNED"]},
     isActive: { type: Boolean, default: true }
 }, { timestamps: true });
 

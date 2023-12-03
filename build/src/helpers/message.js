@@ -3,10 +3,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.validOTP = exports.sendSMS = void 0;
+exports.sendLoginSMS = exports.validOTP = exports.sendSMS = void 0;
 const config_1 = __importDefault(require("config"));
 const client_pinpoint_1 = require("@aws-sdk/client-pinpoint");
 const aws_config = config_1.default.get('aws');
+const aws_pinpoint = config_1.default.get('awsPinpoint');
 const pinpoint_config = {
     region: aws_config.region,
     credentials: {
@@ -80,4 +81,34 @@ async function validOTP(otp_info) {
     });
 }
 exports.validOTP = validOTP;
+async function sendLoginSMS(destinationNumber, message) {
+    const referenceId = generateReferenceId();
+    const params = {
+        ApplicationId: aws_pinpoint.applicationId,
+        MessageRequest: {
+            Addresses: {
+                [destinationNumber]: {
+                    ChannelType: 'SMS'
+                }
+            },
+            MessageConfiguration: {
+                SMSMessage: {
+                    Body: message,
+                    MessageType: 'PROMOTIONAL',
+                    OriginationNumber: aws_pinpoint.originNumber // Replace with your Pinpoint origination number
+                }
+            },
+            TraceId: referenceId
+        }
+    };
+    try {
+        const command = new client_pinpoint_1.SendMessagesCommand(params);
+        const result = await client.send(command);
+        return result;
+    }
+    catch (error) {
+        throw error;
+    }
+}
+exports.sendLoginSMS = sendLoginSMS;
 //# sourceMappingURL=message.js.map

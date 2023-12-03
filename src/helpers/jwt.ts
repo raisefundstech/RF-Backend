@@ -12,11 +12,10 @@ const jwt_token_secret:any = config.get('jwt_token_secret')
 export const userJWT = async (req: Request, res: Response, next) => {
     // console.log(req);
     let { authorization } = req.headers, result: any;
-    let device_token = req.headers["device-token"];
-    if (authorization && device_token) {
+    if (authorization) {
         try {
             let isVerifyToken:any = jwt.verify(authorization, jwt_token_secret)
-            result = await userSessionModel.findOne({ createdBy: new ObjectId(isVerifyToken?._id), isActive: true, device_token: device_token })
+            result = await userSessionModel.findOne({ createdBy: new ObjectId(isVerifyToken?._id), isActive: true })
             if (result?.isActive == true) {
                 req.headers.user = isVerifyToken
                 return next()
@@ -24,8 +23,6 @@ export const userJWT = async (req: Request, res: Response, next) => {
                 return res.status(401).json(new apiResponse(401, responseMessage.invalidToken, {}))
             }
         } catch (err) {
-            if (err.message == "invalid signature") return res.status(401).json(new apiResponse(401, responseMessage.differentToken, {}))
-            console.log(err)
             return res.status(401).json(new apiResponse(401, responseMessage.invalidToken, {}))
         }
     } else {
@@ -33,15 +30,16 @@ export const userJWT = async (req: Request, res: Response, next) => {
     }
 }
 
-export const deleteSession = async function (userId: string) {
+export const deleteSession = async function (userId: string, authorization_token: string) {
     try {
-        const user_session = await userSessionModel.deleteMany({
+        const user_session = await userSessionModel.deleteOne({
             createdBy: new ObjectId(userId),
+            token: authorization_token,
             isActive: true,
         });
         return user_session;
     } catch (error) {
-        console.error('Unable to delete the user session, please try again', error);
+        console.error('Unable to find the user session, please try again', error);
         throw error; 
     }
 };

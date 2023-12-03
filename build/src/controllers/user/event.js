@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.fetchVolunteerAppliedForEvent = exports.addVolunteerToEvent = exports.getVolunteerByEvent = exports.getAllOpenMyEventList = exports.addEventAttendance = exports.getVolunteerByEventAttendance = exports.getAttendanceBeforeEvents = exports.deleteRequestEvent = exports.changeEventRequestStatus = exports.get_event_pagination_for_volunteers = exports.applyOnEvent = exports.get_event_pagination = exports.deleteEvent = exports.getEventById = exports.updateEvent = exports.createEvent = exports.getEvents = void 0;
+exports.addVolunteerToEvent = exports.getVolunteerByEvent = exports.getAllOpenMyEventList = exports.addEventAttendance = exports.getVolunteerByEventAttendance = exports.getAttendanceBeforeEvents = exports.deleteRequestEvent = exports.changeEventRequestStatus = exports.get_event_pagination_for_volunteers = exports.applyOnEvent = exports.get_event_pagination = exports.deleteEvent = exports.getEventById = exports.updateEvent = exports.createEvent = exports.getEvents = void 0;
 const async_1 = __importDefault(require("async"));
 const winston_logger_1 = require("../../helpers/winston_logger");
 const common_1 = require("../../common");
@@ -16,76 +16,6 @@ const getEvents = async (req, res) => {
     (0, winston_logger_1.reqInfo)(req);
     let user = req.header('user'), response, isVolunteer = req.query.isVolunteer;
     try {
-        // response = await eventModel.find({ isActive: true })
-        console.time('mongoconntime');
-        // response = await eventModel.aggregate([
-        //     { $match: { isActive: true } },
-        //     {
-        //         $lookup: {
-        //             from: "users",
-        //             let: { volunteerIds: "$volunteerRequest.volunteerId" },
-        //             pipeline: [
-        //                 {
-        //                     $match: {
-        //                         $expr: {
-        //                             $and: [
-        //                                 { $in: ["$_id", "$$volunteerIds"] }
-        //                             ]
-        //                         }
-        //                     }
-        //                 },
-        //                 { $project: { firstName: 1, lastName: 1, tags: 1, workTime: 1, RBSId: 1, image: 1 } }
-        //             ],
-        //             as: 'volunteerData'
-        //         }
-        //     },
-        //     { $sort: { startTime: -1 } },
-        //     {
-        //         $project: {
-        //             workSpaceId: 1,
-        //             name: 1,
-        //             address: 1,
-        //             latitude: 1,
-        //             longitude: 1,
-        //             date: 1,
-        //             startTime: 1,
-        //             endTime: 1,
-        //             volunteerSize: 1,
-        //             notes: 1,
-        //             isActive: 1,
-        //             isGroupCreated: 1,
-        //             createdBy: 1,
-        //             volunteerRequest: {
-        //                 $map: {
-        //                     input: "$volunteerRequest",
-        //                     as: "request",
-        //                     in: {
-        //                         _id: "$$request._id",
-        //                         volunteerId: "$$request.volunteerId",
-        //                         requestStatus: "$$request.requestStatus",
-        //                         attendance: "$$request.attendance",
-        //                         volunteerData: {
-        //                             $arrayElemAt: [
-        //                                 {
-        //                                     $filter: {
-        //                                         input: "$volunteerData",
-        //                                         cond: { $eq: ["$$this._id", "$$request.volunteerId"] }
-        //                                     }
-        //                                 },
-        //                                 0
-        //                             ]
-        //                         }
-        //                     }
-        //                 }
-        //             },
-        //             isEventOwn: {
-        //                 $cond: [{ $eq: ['$createdBy', ObjectId(user._id)] }, true, false]
-        //             },
-        //             createdAt: 1,
-        //             updatedAt: 1,
-        //         }
-        //     }
-        // ])
         response = await database_1.eventModel.aggregate([
             { $match: { isActive: true } },
             { $sort: { startTime: -1 } },
@@ -94,32 +24,38 @@ const getEvents = async (req, res) => {
                     workSpaceId: 1,
                     name: 1,
                     address: 1,
-                    // latitude: 1,
-                    // longitude: 1,
                     date: 1,
                     startTime: 1,
                     endTime: 1,
                     volunteerSize: 1,
                     notes: 1,
                     isActive: 1,
-                    isGroupCreated: 1,
                     createdBy: 1,
+                    volunteerRequest: {
+                        $filter: {
+                            input: "$volunteerRequest",
+                            as: "volunteer",
+                            cond: {
+                                $eq: ["$$volunteer.volunteerId", ObjectId(user._id)]
+                            }
+                        }
+                    },
                     isEventOwn: {
                         $cond: [{ $eq: ['$createdBy', ObjectId(user._id)] }, true, false]
-                    }
-                    // createdAt: 1,
-                    // updatedAt: 1,
+                    },
+                    createdAt: 1,
+                    updatedAt: 1,
                 }
             }
         ]);
-        console.timeEnd('mongoconntime');
+        // console.timeEnd('mongoconntime');
         if (response)
             return res.status(200).json(new common_1.apiResponse(200, helpers_1.responseMessage.getDataSuccess('events'), response));
         else
             return res.status(404).json(new common_1.apiResponse(404, helpers_1.responseMessage.getDataNotFound('events'), {}));
     }
     catch (error) {
-        console.log(error);
+        // console.log(error);
         return res.status(500).json(new common_1.apiResponse(500, helpers_1.responseMessage?.internalServerError, error));
     }
 };
@@ -207,8 +143,8 @@ exports.updateEvent = updateEvent;
 const getEventById = async (req, res) => {
     (0, winston_logger_1.reqInfo)(req);
     let user = req.header('user'), response;
+    let userStatus = await database_1.userModel.findOne({ _id: ObjectId(user._id) }, { userType: 1 });
     try {
-        // response = await eventModel.findOne({ _id: ObjectId(req.params.id), isActive: true });
         response = await database_1.eventModel.aggregate([
             {
                 $match: {
@@ -229,13 +165,7 @@ const getEventById = async (req, res) => {
                     notes: 1,
                     isGroupCreated: 1,
                     createdBy: 1,
-                    volunteerRequest: {
-                        $filter: {
-                            input: '$volunteerRequest',
-                            as: 'volunteerRequest',
-                            cond: { $eq: ['$$volunteerRequest.volunteerId', ObjectId(user._id)] }
-                        }
-                    },
+                    volunteerRequest: 1,
                     isApply: {
                         $cond: [{
                                 $eq: [{
@@ -253,6 +183,10 @@ const getEventById = async (req, res) => {
                 }
             }
         ]);
+        // The userStatus represent the user is admin or volunteer or super-volunteer
+        if (userStatus?.userType === 0) {
+            delete response[0]?.volunteerRequest;
+        }
         if (response)
             return res.status(200).json(new common_1.apiResponse(200, helpers_1.responseMessage.getDataSuccess('event'), response[0]));
         else
@@ -574,10 +508,8 @@ const changeEventRequestStatus = async (req, res) => {
             }, {
                 "volunteerRequest.$": 1
             });
-            if (body[0]?.requestStatus == "APPROVED") {
-                if (new Date(findEvent?.volunteerRequest[0]?.appliedAt) > new Date(getEvent.startTime)) {
-                    match['volunteerRequest.$.attendance'] = true;
-                }
+            if (body[0]?.requestStatus == "APPROVED" && findEvent?.volunteerRequest[0]?.checkedIn == true && findEvent?.volunteerRequest[0]?.checkedOut == true) {
+                match['volunteerRequest.$.attendance'] = true;
             }
             response = await database_1.eventModel.findOneAndUpdate({
                 _id: ObjectId(item.id),
@@ -1210,9 +1142,4 @@ const addVolunteerToEvent = async (req, res) => {
     }
 };
 exports.addVolunteerToEvent = addVolunteerToEvent;
-const fetchVolunteerAppliedForEvent = async (req, res) => {
-    (0, winston_logger_1.reqInfo)(req);
-    const event_id = req.header('event_id');
-};
-exports.fetchVolunteerAppliedForEvent = fetchVolunteerAppliedForEvent;
 //# sourceMappingURL=event.js.map

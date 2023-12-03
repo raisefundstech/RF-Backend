@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.logoutUser = exports.deleteUser = exports.addVolunteer = exports.updateVolunteerPosition = exports.getVolunteers = exports.switchWorkSpace = exports.updateProfile = exports.getProfile = void 0;
+exports.getUnverifiedVolunteers = exports.logoutUser = exports.deleteUser = exports.addVolunteer = exports.updateVolunteerPosition = exports.getVolunteer = exports.getVolunteers = exports.switchWorkSpace = exports.updateProfile = exports.getProfile = void 0;
 const winston_logger_1 = require("../../helpers/winston_logger");
 const common_1 = require("../../common");
 const helpers_1 = require("../../helpers");
@@ -165,24 +165,45 @@ const getVolunteers = async (req, res) => {
     }
 };
 exports.getVolunteers = getVolunteers;
+// This function is responsible for retrieving the details of a volunteer.
+// It checks the user's permission and returns the volunteer's information if the user is an admin or a super-volunteer.
+// The volunteer ID is required as a parameter in the request.
+// If the volunteer is found, it returns a success response with the volunteer's details.
+// If the volunteer is not found, it returns a not found response.
+// If the user does not have the necessary permission, it returns an unauthorized response.
+// If there is an error during the process, it returns a server error response.
+const getVolunteer = async (req, res) => {
+    (0, winston_logger_1.reqInfo)(req);
+    const user = req.header('user') || '';
+    try {
+        const userStatus = await database_1.userModel.findOne({ _id: ObjectId(user._id) }, { userType: 1 });
+        if (userStatus?.userType === 1 || userStatus?.userType === 2) {
+            if (!req.params.id) {
+                return res.status(400).json(new common_1.apiResponse(400, 'Volunteer ID is required!', {}));
+            }
+            const response = await database_1.userModel.findById(req.params.id, { otp: 0, otpExpireTime: 0, device_token: 0 });
+            if (response) {
+                return res.status(200).json(new common_1.apiResponse(200, helpers_1.responseMessage.getDataSuccess('volunteer'), response));
+            }
+            else {
+                return res.status(404).json(new common_1.apiResponse(404, helpers_1.responseMessage.getDataNotFound('volunteer'), {}));
+            }
+        }
+        else {
+            return res.status(401).json(new common_1.apiResponse(401, helpers_1.responseMessage.deniedPermission, {}));
+        }
+    }
+    catch (error) {
+        return res.status(500).json(new common_1.apiResponse(500, helpers_1.responseMessage?.internalServerError, error));
+    }
+};
+exports.getVolunteer = getVolunteer;
 const updateVolunteerPosition = async (req, res) => {
     (0, winston_logger_1.reqInfo)(req);
     let body = req.body, response, user = req.header('user');
+    let userAuthority = await database_1.userModel.findOne({ _id: ObjectId(user._id), isActive: true }, { userType: 1 });
     try {
-        if (body.userType == 0) {
-            if (!body.workSpaceId) {
-                return res.status(404).json(new common_1.apiResponse(400, 'workSpaceId is required!', {}));
-            }
-            response = await database_1.userModel.findOneAndUpdate({ _id: ObjectId(body.id), isActive: true }, body, { new: true });
-        }
-        else if (body.userType == 1) {
-            // body.workSpaceId = null;
-            if (!body.workSpaceId) {
-                return res.status(404).json(new common_1.apiResponse(400, 'workSpaceId is required!', {}));
-            }
-            response = await database_1.userModel.findOneAndUpdate({ _id: ObjectId(body.id), isActive: true }, body, { new: true });
-        }
-        else {
+        if (userAuthority == 1 || userAuthority == 2) {
             if (!body.workSpaceId) {
                 return res.status(404).json(new common_1.apiResponse(400, 'workSpaceId is required!', {}));
             }
@@ -192,13 +213,14 @@ const updateVolunteerPosition = async (req, res) => {
             return res.status(200).json(new common_1.apiResponse(200, 'Volunteer position or tags changed!', {}));
         }
         else
-            return res.status(404).json(new common_1.apiResponse(404, 'Database error while changing volunteer position and tags', {}));
+            return res.status(404).json(new common_1.apiResponse(404, 'Error occured while updating volunteer information', {}));
     }
     catch (error) {
         return res.status(500).json(new common_1.apiResponse(500, helpers_1.responseMessage?.internalServerError, error));
     }
 };
 exports.updateVolunteerPosition = updateVolunteerPosition;
+// This function is responsible for adding a new volunteer which can be performed by an admin or a super-volunteer.
 const addVolunteer = async (req, res) => {
     (0, winston_logger_1.reqInfo)(req);
     let body = req.body, user = req.header('user');
@@ -241,7 +263,7 @@ const logoutUser = async (req, res) => {
     (0, winston_logger_1.reqInfo)(req);
     let user = req.header('user');
     try {
-        const user_session = await (0, jwt_1.deleteSession)(user._id);
+        const user_session = await (0, jwt_1.deleteSession)(user._id, req.headers['authorization']);
         if (user_session.deletedCount > 0) {
             return res.status(200).json(new common_1.apiResponse(200, helpers_1.responseMessage?.logoutSuccess, {}));
         }
@@ -254,4 +276,22 @@ const logoutUser = async (req, res) => {
     }
 };
 exports.logoutUser = logoutUser;
+const getUnverifiedVolunteers = async (req, res) => {
+    (0, winston_logger_1.reqInfo)(req);
+    let user = req.header('user');
+    let workspaceId = req.header('workspaceId'); // Scan workspaceId from request header
+    try {
+        const response = await database_1.userModel.find({ workSpaceId: workspaceId, isActive: true, userRole: "NOT_VERIFIED" });
+        if (response) {
+            return res.status(200).json(new common_1.apiResponse(200, helpers_1.responseMessage.getDataSuccess('unverified volunteers'), response));
+        }
+        else {
+            return res.status(404).json(new common_1.apiResponse(404, helpers_1.responseMessage.getDataNotFound('unverified volunteers'), {}));
+        }
+    }
+    catch (error) {
+        return res.status(500).json(new common_1.apiResponse(500, helpers_1.responseMessage?.internalServerError, error.message));
+    }
+};
+exports.getUnverifiedVolunteers = getUnverifiedVolunteers;
 //# sourceMappingURL=user.js.map

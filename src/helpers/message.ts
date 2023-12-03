@@ -1,7 +1,9 @@
-import config from 'config'
-import { PinpointClient, SendOTPMessageCommand, VerifyOTPMessageCommand} from "@aws-sdk/client-pinpoint";
+import config from 'config';
+import { PinpointClient, SendOTPMessageCommand,SendMessagesCommand, VerifyOTPMessageCommand, AddressConfiguration, MessageType} from "@aws-sdk/client-pinpoint";
 
 const aws_config: any = config.get('aws');
+const aws_pinpoint: any = config.get('awsPinpoint');
+
 const pinpoint_config = {
     region: aws_config.region,
     credentials: {
@@ -76,3 +78,33 @@ export async function validOTP(otp_info) : Promise<any> {
     });
 }
 
+export async function sendLoginSMS(destinationNumber: string, message: string): Promise<any> {
+  const referenceId = generateReferenceId();
+
+  const params = {
+      ApplicationId: aws_pinpoint.applicationId , // Replace with your Pinpoint application ID
+      MessageRequest: {
+          Addresses: {
+              [destinationNumber]: {
+                  ChannelType: 'SMS'
+              }
+          } as Record<string,AddressConfiguration>,
+          MessageConfiguration: {
+              SMSMessage: {
+                  Body: message,
+                  MessageType: 'PROMOTIONAL' as MessageType, // Change to 'TRANSACTIONAL' if needed
+                  OriginationNumber: aws_pinpoint.originNumber // Replace with your Pinpoint origination number
+              }
+          },
+          TraceId: referenceId
+      }
+  };
+
+  try {
+    const command = new SendMessagesCommand(params);
+    const result = await client.send(command);
+    return result; 
+  } catch (error) {
+    throw error; 
+  }
+}

@@ -15,11 +15,10 @@ const jwt_token_secret = config_1.default.get('jwt_token_secret');
 const userJWT = async (req, res, next) => {
     // console.log(req);
     let { authorization } = req.headers, result;
-    let device_token = req.headers["device-token"];
-    if (authorization && device_token) {
+    if (authorization) {
         try {
             let isVerifyToken = jsonwebtoken_1.default.verify(authorization, jwt_token_secret);
-            result = await database_1.userSessionModel.findOne({ createdBy: new ObjectId(isVerifyToken?._id), isActive: true, device_token: device_token });
+            result = await database_1.userSessionModel.findOne({ createdBy: new ObjectId(isVerifyToken?._id), isActive: true });
             if (result?.isActive == true) {
                 req.headers.user = isVerifyToken;
                 return next();
@@ -29,9 +28,6 @@ const userJWT = async (req, res, next) => {
             }
         }
         catch (err) {
-            if (err.message == "invalid signature")
-                return res.status(401).json(new common_1.apiResponse(401, response_1.responseMessage.differentToken, {}));
-            console.log(err);
             return res.status(401).json(new common_1.apiResponse(401, response_1.responseMessage.invalidToken, {}));
         }
     }
@@ -40,16 +36,17 @@ const userJWT = async (req, res, next) => {
     }
 };
 exports.userJWT = userJWT;
-const deleteSession = async function (userId) {
+const deleteSession = async function (userId, authorization_token) {
     try {
-        const user_session = await database_1.userSessionModel.deleteMany({
+        const user_session = await database_1.userSessionModel.deleteOne({
             createdBy: new ObjectId(userId),
+            token: authorization_token,
             isActive: true,
         });
         return user_session;
     }
     catch (error) {
-        console.error('Unable to delete the user session, please try again', error);
+        console.error('Unable to find the user session, please try again', error);
         throw error;
     }
 };

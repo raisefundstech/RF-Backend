@@ -6,12 +6,10 @@ import jwt from 'jsonwebtoken'
 import config from 'config'
 import { Request, Response } from 'express'
 import { responseMessage } from '../helpers'
-import { generateVolunteerCode } from '../helpers/generateCode'
+import { generateVolunteerCode, generateOTP } from '../helpers/generateCode'
 import { sendEmail } from '../helpers/email'
-import { sendSMS,validOTP } from '../helpers/message'
-import { logoutUser } from './user'
-import { deleteSession } from '../helpers/jwt'
-import { getCurrentUnixTimestamp } from '../helpers/cron'
+import { sendSMS,validOTP, sendLoginSMS } from '../helpers/message'
+import { send } from 'process'
 const twilio: any = config.get("twilio");
 const client = require('twilio')(twilio.accountSid, twilio.authToken);
 const ObjectId = require('mongoose').Types.ObjectId
@@ -70,75 +68,47 @@ export const userSignUp = async (req: Request, res: Response) => {
 }
 
 export const userSignIn = async (req: Request, res: Response) => {
-    let body = req.body,
-    otpFlag = 1,
-    otp = 0
-    reqInfo(req)
+    let body = req.body;
+    let otpFlag = 1;
+    let otp = 0;
+    reqInfo(req);
     try {
-        if (body?.mobileNumber == "+91 8347055891") {
-            otp = 123456;
-        } else {
-            while (otpFlag == 1) {
-                for (let flag = 0; flag < 1;) {
-                    otp = await Math.round(Math.random() * 1000000)
-                    if (otp.toString().length == 6) {
-                        flag++
-                    }
-                }
-                let isAlreadyAssign = await userModel.findOne({ otp: otp })
-                if (isAlreadyAssign?.otp != otp) otpFlag = 0
-            }
+        // generate a otp and send it to the user via sms 
+        otp = generateOTP();
+        const currentTimestamp = new Date();
+        const otpExpireTime = new Date(currentTimestamp.getTime() + 5 * 60000); // 5 minutes in milliseconds
+        let findData: any = await userModel.findOneAndUpdate(
+            { $and: [{ $or: [{ userType: 0 }, { userType: 1 }, { userType: 2 }] }, { mobileNumber: body.mobileNumber, isActive: true }] },
+            { otp, otpExpireTime: otpExpireTime },
+            { new: true }
+        );
+        if (!findData) {
+            return res.status(400).json(new apiResponse(400, responseMessage?.invalidMobileNumber, {}));
         }
 
-        let findData: any = await userModel.findOneAndUpdate({ $and: [{ $or: [{ userType: 0 }, { userType: 1 }, { userType: 2 }] }, { mobileNumber: body.mobileNumber, isActive: true }] }, { otp, otpExpireTime: new Date(new Date().setMinutes(new Date().getMinutes() + 5)) }, { new: true })
-        if (!findData) return res.status(400).json(new apiResponse(400, responseMessage?.invalidMobileNumber, {}))
-
-        // let response = await userModel.findOneAndUpdate({ $and: [{ $or: [{ userType: 0 }, { userType: 1 }, { userType: 2 }] }, { mobileNumber: body.mobileNumber, isActive: true }] }, { otp, otpExpireTime: new Date(new Date().setMinutes(new Date().getMinutes() + 2)) })
+        const messageBody = `${findData?.otp} is your OTP to log in to Raise funds. Code will expire in 5 minutes.`;
 
         if (findData) {
-            // const token = jwt.sign({
-            //     _id: findData._id,
-            //     workSpaceId: findData?.workSpaceId,
-            //     type: findData.userType,
-            //     status: "Login",
-            //     generatedOn: (new Date().getTime())
-            // }, jwt_token_secret);
-
-            // const refresh_token = jwt.sign({
-            //     _id: findData._id,
-            //     generatedOn: (new Date().getTime())
-            // }, refresh_jwt_token_secret);
-
-            // await new userSessionModel({
-            //     createdBy: findData._id,
-            //     refresh_token
-            // }).save();
-
-            client.messages
-                .create({
-                    body: `${findData?.otp} is your OTP to log in to Raise funds. Code will be expire in 5 minutes.`,
-                    to: findData?.mobileNumber, // Text your number
-                    // from: '+19207543388', // From a valid Twilio number
-                    messagingServiceSid: twilio.messagingServiceSid
-                })
-                .then((message) => console.log(message.sid))
-                .catch(error => console.log(error));
-            
-            const emailResponse = await sendEmail(findData?.email,findData?.otp);
-            var email_message = null;
-            if(emailResponse.accepted.length > 0){
-                email_message = 'Email sent successfully to: ' + emailResponse?.accepted; 
+            var sms_response = sendLoginSMS(findData?.mobileNumber, messageBody);
+            console.log(sms_response);
+            if (sms_response) {
+                return res.status(200).json(new apiResponse(200, `OTP has been sent to this ${findData.mobileNumber}`, {}));
             }
-            return res.status(200).json(new apiResponse(200, `OTP has been sent to this ${findData.mobileNumber}`, {email_message}));
-        } else {
-            email_message = 'Email rejected for delivery to: ' + findData?.email;
-            return res.status(501).json(new apiResponse(501, 'Something went wrong', {email_message}))
+            // Temporary commented the email functionality to send the OTP
+            // const emailResponse = await sendEmail(findData?.email, findData?.otp);
+            // var email_message = null;
+            // if (emailResponse.accepted.length > 0) {
+            //     email_message = 'Email sent successfully to: ' + emailResponse?.accepted;
+            // }
+            // return res.status(200).json(new apiResponse(200, `OTP has been sent to this ${findData.mobileNumber}`, { email_message }));
         }
+        let error_message = 'SMS rejected for delivery to: ' + findData?.mobileNumber;
+        return res.status(501).json(new apiResponse(501, 'Something went wrong', { error_message }));
     } catch (error) {
-        console.log(error)
-        return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, error))
+        console.log(error);
+        return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, error));
     }
-}
+};
 
 export const otpVerification = async (req: Request, res: Response) => {
     reqInfo(req)
@@ -150,22 +120,26 @@ export const otpVerification = async (req: Request, res: Response) => {
 
         if (!findUser) return res.status(400).json(new apiResponse(400, responseMessage?.invalidOTP, {}))
 
-        if (new Date(findUser.otpExpireTime).getTime() < new Date().getTime()) return res.status(410).json(new apiResponse(410, responseMessage?.expireOTP, {}))
+        // checks if the user has submitted the OTP with in the expiry time, expiry time is set to creation time + 5 minutes
+        if (findUser.otpExpireTime < new Date()){
+            return res.status(410).json(new apiResponse(410, responseMessage?.expireOTP, {}))
+        }
 
         if (findUser) {
 
-            let isLoggedIn = await userSessionModel.findOne({createdBy: ObjectId(findUser._doc._id.toString())})
-            let logout_response = null;
+            // Removing the functionality of logout from all devices upon login from a device
+
+            // let LoggedIn = await userSessionModel.findOne({createdBy: ObjectId(findUser._doc._id.toString())})
+            // let logout_response = null;
             
-            if(isLoggedIn) {
-                var delete_session = await deleteSession(findUser._doc._id);
-                console.log(delete_session);
-                logout_response = deleteSession != null ? responseMessage?.logoutDevices : '';
-            }
+            // if(LoggedIn) {
+            //     var delete_session = await deleteSession(findUser._doc._id);
+            //     console.log(delete_session);
+            //     logout_response = deleteSession != null ? responseMessage?.logoutDevices : '';
+            // }
 
-            let device_token = getCurrentUnixTimestamp();
-
-            let response = await userModel.findOneAndUpdate({ otp: body.otp, mobileNumber: body.mobileNumber, isActive: true }, { otp: null, otpExpireTime: null, $addToSet: { device_token: device_token } }, { new: true })
+            // $addToSet: { device_token: device_token } } will be implemented into the notifications feature
+            let response = await userModel.findOneAndUpdate({ otp: body.otp, mobileNumber: body.mobileNumber, isActive: true }, { otp: null, otpExpireTime: null}, { new: true })
 
             const token = jwt.sign({
                 _id: response._id,
@@ -182,7 +156,7 @@ export const otpVerification = async (req: Request, res: Response) => {
 
             await new userSessionModel({
                 createdBy: response._id,
-                device_token: device_token,
+                token: token,
                 refresh_token
             }).save();
 
@@ -195,8 +169,6 @@ export const otpVerification = async (req: Request, res: Response) => {
                 email: response?.email,
                 workSpaceId: response?.workSpaceId,
                 tags: response?.tags,
-                logout: logout_response,
-                device_token: device_token,
                 token
             }
             return res.status(200).json(new apiResponse(200, responseMessage?.OTPverified, responseIs))

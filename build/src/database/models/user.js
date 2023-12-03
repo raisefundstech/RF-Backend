@@ -34,6 +34,7 @@ const userSchema = new mongoose_1.default.Schema({
     device_token: { type: [{ type: String }], default: [] },
     loginType: { type: Number, default: 0, enum: [0, 1, 2, 3] },
     userType: { type: Number, default: 0, enum: [0, 1, 2] },
+    userRole: { type: String, default: "NOT_VERIFIED", enum: ["VERIFIED", "NOT_VERIFIED", "BANNED"] },
     isActive: { type: Boolean, default: true }
 }, { timestamps: true });
 exports.userModel = mongoose_1.default.model('user', userSchema);

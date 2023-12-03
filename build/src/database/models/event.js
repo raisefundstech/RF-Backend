@@ -21,7 +21,10 @@ const eventSchema = new mongoose_1.default.Schema({
                 volunteerId: { type: mongoose_1.default.Schema.Types.ObjectId },
                 requestStatus: { type: String, default: "PENDING", enum: ["PENDING", "APPROVED", "DECLINED"] },
                 attendance: { type: Boolean, default: false },
-                appliedAt: { type: Date, default: new Date() }
+                appliedAt: { type: Date, default: new Date() },
+                checkedIn: { type: Boolean, default: false },
+                checkedOut: { type: Boolean, default: false },
+                userNote: { type: [{ type: String }], default: [] },
             }], default: []
     },
     createdBy: { type: mongoose_1.default.Schema.Types.ObjectId, ref: "user" },
