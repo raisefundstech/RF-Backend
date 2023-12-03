@@ -18,7 +18,7 @@ export const userSignUp = async (req: Request, res: Response, next: any) => {
         workSpaceId: Joi.string().trim().required().error(new Error('workSpaceId is required!')),
         image: Joi.string().trim().allow(null, "").error(new Error('image is string!')),
         userType: Joi.number().allow(null).error(new Error('userType is number!')),
-        userRole: Joi.string().trim().allow(null,"").error(new Error('userRole is string!')),
+        userStatus: Joi.number().allow(null).error(new Error('userStatus is number!')),
         universityName: Joi.string().trim().allow(null, "").error(new Error('universityName is string!')),
         major: Joi.string().trim().allow(null, "").error(new Error('major is string!')),
         yearOfEducationCompletion: Joi.string().trim().allow(null, "").error(new Error('yearOfEducationCompletion is string!')),
@@ -115,9 +115,10 @@ export const by_id = async (req: Request, res: Response, next: any) => {
     next()
 }
 
-export const checkWorkspaceId = async (req: Request, res: Response, next: any) => {
-    if (!req.headers.workspaceId) {
-        return res.status(400).json(new apiResponse(400, responseMessage.invalidId('workspaceId'), {}));
+export const checkWorkSpaceId = async (req: Request, res: Response, next: any) => {
+    const workSpaceId = req.query.workSpaceId as string;
+    if (!workSpaceId) {
+        return res.status(400).json(new apiResponse(400, responseMessage.invalidId('workSpaceId'), {}));
     }
     next();
 }

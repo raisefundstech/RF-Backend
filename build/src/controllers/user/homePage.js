@@ -5,7 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.sendCSVFile = exports.homePage = void 0;
 const config_1 = __importDefault(require("config"));
-const aws_sdk_1 = __importDefault(require("aws-sdk"));
+const s3_1 = __importDefault(require("aws-sdk/clients/s3"));
 const fs_1 = __importDefault(require("fs"));
 const winston_logger_1 = require("../../helpers/winston_logger");
 const common_1 = require("../../common");
@@ -15,7 +15,7 @@ const mail_1 = require("../../helpers/mail");
 const csvWriter = require('csv-writer').createObjectCsvWriter;
 const ObjectId = require('mongoose').Types.ObjectId;
 const aws = config_1.default.get("aws");
-const s3 = new aws_sdk_1.default.S3({
+const s3 = new s3_1.default({
     accessKeyId: aws.accessKeyId,
     secretAccessKey: aws.secretAccessKey,
     region: aws.region,

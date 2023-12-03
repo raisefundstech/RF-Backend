@@ -168,7 +168,7 @@ export const getEventById = async (req: Request, res: Response) => {
                 }
             }
         ]);
-        // The userStatus represent the user is admin or volunteer or super-volunteer
+        // If the userStatus represent the user is a volunteer delete the volunteerRequest from the response
         if(userStatus?.userType === 0){
             delete response[0]?.volunteerRequest;
         }

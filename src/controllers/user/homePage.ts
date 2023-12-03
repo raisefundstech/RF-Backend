@@ -1,6 +1,5 @@
-import async from 'async'
 import config from "config";
-import AWS from "aws-sdk";
+import S3 from 'aws-sdk/clients/s3';
 import fs from 'fs';
 import { reqInfo } from '../../helpers/winston_logger'
 import { apiResponse, userStatus } from '../../common'
@@ -12,7 +11,7 @@ const csvWriter = require('csv-writer').createObjectCsvWriter;
 const ObjectId = require('mongoose').Types.ObjectId
 
 const aws: any = config.get("aws");
-const s3 = new AWS.S3({
+const s3 = new S3({
     accessKeyId: aws.accessKeyId,
     secretAccessKey: aws.secretAccessKey,
     region: aws.region,

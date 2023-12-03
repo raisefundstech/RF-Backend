@@ -52,7 +52,7 @@ router.put('/event/volunteers/add', controllers_1.userController.addVolunteerToE
 //  -------  Volunteers  -------
 router.get('/volunteers', controllers_1.userController.getVolunteers);
 router.get('/volunteer/:id', validation_1.userValidation.by_id, controllers_1.userController.getVolunteer),
-    router.get('/unverified/volunteers', validation_1.userValidation.checkWorkspaceId, controllers_1.userController.getUnverifiedVolunteers),
+    router.get('/unverified/volunteers', validation_1.userValidation.checkWorkSpaceId, controllers_1.userController.getUnverifiedVolunteers),
     router.put('/volunteer/position', validation_1.userValidation.volunteerUpdate, controllers_1.userController.updateVolunteerPosition);
 router.post('/volunteer/add', validation_1.userValidation.userSignUp, controllers_1.userController.addVolunteer);
 //  -------  Attendance  --------

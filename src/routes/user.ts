@@ -54,7 +54,7 @@ router.put('/event/volunteers/add', userController.addVolunteerToEvent)
 //  -------  Volunteers  -------
 router.get('/volunteers', userController.getVolunteers)
 router.get('/volunteer/:id',userValidation.by_id, userController.getVolunteer),
-router.get('/unverified/volunteers', userValidation.checkWorkspaceId, userController.getUnverifiedVolunteers),
+router.get('/unverified/volunteers', userValidation.checkWorkSpaceId, userController.getUnverifiedVolunteers),
 router.put('/volunteer/position', userValidation.volunteerUpdate, userController.updateVolunteerPosition)
 router.post('/volunteer/add', userValidation.userSignUp, userController.addVolunteer)
 

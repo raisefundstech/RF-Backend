@@ -203,7 +203,7 @@ const updateVolunteerPosition = async (req, res) => {
     let body = req.body, response, user = req.header('user');
     let userAuthority = await database_1.userModel.findOne({ _id: ObjectId(user._id), isActive: true }, { userType: 1 });
     try {
-        if (userAuthority == 1 || userAuthority == 2) {
+        if (userAuthority == 1) {
             if (!body.workSpaceId) {
                 return res.status(404).json(new common_1.apiResponse(400, 'workSpaceId is required!', {}));
             }
@@ -279,9 +279,9 @@ exports.logoutUser = logoutUser;
 const getUnverifiedVolunteers = async (req, res) => {
     (0, winston_logger_1.reqInfo)(req);
     let user = req.header('user');
-    let workspaceId = req.header('workspaceId'); // Scan workspaceId from request header
+    let workspaceId = req.query.workSpaceId; // Get workspaceId from query string parameter
     try {
-        const response = await database_1.userModel.find({ workSpaceId: workspaceId, isActive: true, userRole: "NOT_VERIFIED" });
+        const response = await database_1.userModel.find({ workSpaceId: ObjectId(workspaceId), isActive: true, userStatus: 0 });
         if (response) {
             return res.status(200).json(new common_1.apiResponse(200, helpers_1.responseMessage.getDataSuccess('unverified volunteers'), response));
         }
