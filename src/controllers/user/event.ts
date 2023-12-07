@@ -108,13 +108,14 @@ export const updateEvent = async (req: Request, res: Response) => {
     let user: any = req.header('user'), response: any, body = req.body;
     try {
         body.updatedBy = user?._id;
+        // only admin and super volunteer can update the event
         if (body.startTime || body.endTime) {
             if (new Date(body.startTime) < new Date() || new Date(body.endTime) < new Date() || new Date(body.startTime).toString() == new Date(body.endTime).toString()) return res.status(400).json(new apiResponse(400, "Invalid start time or end time!", {}))
         }
         if (body.volunteerSize) {
             if (body.volunteerSize < 2) return res.status(400).json(new apiResponse(400, "Please add volunteer size more than 1 . ", {}))
         }
-        response = await eventModel.findOneAndUpdate({ _id: ObjectId(body.id), isActive: true, startTime: { $gte: new Date() } }, body, { new: true });
+        response = await eventModel.findOneAndUpdate({ _id: ObjectId(body.id), isActive: true }, body, { new: true });
         if (response) {
             let updateRoomName = await roomModel.findOneAndUpdate({ eventId: ObjectId(response?._id), isActive: true }, { roomName: response?.name + " " + "group" })
             return res.status(200).json(new apiResponse(200, responseMessage.updateDataSuccess('event'), {}))

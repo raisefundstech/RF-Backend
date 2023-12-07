@@ -119,6 +119,7 @@ const updateEvent = async (req, res) => {
     let user = req.header('user'), response, body = req.body;
     try {
         body.updatedBy = user?._id;
+        // only admin and super volunteer can update the event
         if (body.startTime || body.endTime) {
             if (new Date(body.startTime) < new Date() || new Date(body.endTime) < new Date() || new Date(body.startTime).toString() == new Date(body.endTime).toString())
                 return res.status(400).json(new common_1.apiResponse(400, "Invalid start time or end time!", {}));
@@ -127,7 +128,7 @@ const updateEvent = async (req, res) => {
             if (body.volunteerSize < 2)
                 return res.status(400).json(new common_1.apiResponse(400, "Please add volunteer size more than 1 . ", {}));
         }
-        response = await database_1.eventModel.findOneAndUpdate({ _id: ObjectId(body.id), isActive: true, startTime: { $gte: new Date() } }, body, { new: true });
+        response = await database_1.eventModel.findOneAndUpdate({ _id: ObjectId(body.id), isActive: true }, body, { new: true });
         if (response) {
             let updateRoomName = await database_1.roomModel.findOneAndUpdate({ eventId: ObjectId(response?._id), isActive: true }, { roomName: response?.name + " " + "group" });
             return res.status(200).json(new common_1.apiResponse(200, helpers_1.responseMessage.updateDataSuccess('event'), {}));

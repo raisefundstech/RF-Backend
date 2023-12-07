@@ -14,6 +14,7 @@ router.post('/login', validation_1.userValidation?.userSignIn, controllers_1.aut
 router.post('/otpVerification', validation_1.userValidation?.otpVerification, controllers_1.authenticationController?.otpVerification);
 router.post('/resendOTP', validation_1.userValidation.resendOTP, controllers_1.authenticationController?.resendOTP);
 router.get('/workSpaces', controllers_1.userController.getWorkSpace);
+router.get('/validate', validation_1.userValidation?.userSignIn, controllers_1.authenticationController?.validate);
 router.post('/sendOTP', validation_1.userValidation.resendOTP, controllers_1.authenticationController?.sendOTP);
 router.post('/verifyOTP', validation_1.userValidation.verifyOTP, controllers_1.authenticationController?.verifyOTP);
 // router.get('/addColumn', userController.add_column)

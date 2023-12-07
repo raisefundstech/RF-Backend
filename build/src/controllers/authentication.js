@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.userLogout = exports.resendOTP = exports.verifyOTP = exports.sendOTP = exports.otpVerification = exports.userSignIn = exports.userSignUp = void 0;
+exports.validate = exports.userLogout = exports.resendOTP = exports.verifyOTP = exports.sendOTP = exports.otpVerification = exports.userSignIn = exports.userSignUp = void 0;
 const winston_logger_1 = require("../helpers/winston_logger");
 const database_1 = require("../database");
 const common_1 = require("../common");
@@ -21,51 +21,23 @@ const refresh_jwt_token_secret = config_1.default.get('refresh_jwt_token_secret'
 const userSignUp = async (req, res) => {
     (0, winston_logger_1.reqInfo)(req);
     try {
-        let body = req.body, otpFlag = 1, otp = 0;
+        let body = req.body;
         let isAlready = await database_1.userModel.findOne({ $or: [{ email: body.email }, { mobileNumber: body.mobileNumber }], isActive: true });
         if (isAlready?.email == body?.email)
             return res.status(409).json(new common_1.apiResponse(409, helpers_1.responseMessage?.alreadyEmail, {}));
         if (isAlready?.mobileNumber == body?.mobileNumber)
             return res.status(409).json(new common_1.apiResponse(409, helpers_1.responseMessage?.alreadyMobileNumber, {}));
-        if (body.mobileNumber == "+91 8347055891") {
-            otp = 123456;
-        }
-        else {
-            while (otpFlag == 1) {
-                for (let flag = 0; flag < 1;) {
-                    otp = await Math.round(Math.random() * 1000000);
-                    if (otp.toString().length == 6) {
-                        flag++;
-                    }
-                }
-                let isAlreadyAssign = await database_1.userModel.findOne({ otp: otp });
-                if (isAlreadyAssign?.otp != otp)
-                    otpFlag = 0;
-            }
-        }
-        body.otp = otp;
-        body.otpExpireTime = new Date(new Date().setMinutes(new Date().getMinutes() + 5));
         body.volunteerId = await (0, generateCode_1.generateVolunteerCode)();
         let response = await new database_1.userModel(body).save();
         if (response) {
-            client.messages
-                .create({
-                body: `${response?.otp} is your OTP to registration in to Raise funds. Code will be expire in 5 minutes.`,
-                to: response?.mobileNumber,
-                // from: '+19207543388', // From a valid Twilio number
-                messagingServiceSid: twilio.messagingServiceSid
-            })
-                .then((message) => console.log(message.sid))
-                .catch(error => console.log(error));
-            return res.status(200).json(new common_1.apiResponse(200, `OTP has been sent to this ${body.mobileNumber}`, {}));
+            return res.status(200).json(new common_1.apiResponse(200, helpers_1.responseMessage.signupSuccess, {}));
         }
         else {
-            return res.status(501).json(new common_1.apiResponse(501, "Something went wrong", {}));
+            return res.status(501).json(new common_1.apiResponse(501, "Something went wrong", { response }));
         }
     }
     catch (error) {
         return res.status(500).json({ error: error.message });
-        // return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, error))
     }
 };
 exports.userSignUp = userSignUp;
@@ -281,4 +253,26 @@ const userLogout = async (req, res) => {
     }
 };
 exports.userLogout = userLogout;
+/**
+ * Validates if a mobile number exists in the userModel.
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns The response with the validation result.
+ */
+const validate = async (req, res) => {
+    (0, winston_logger_1.reqInfo)(req);
+    try {
+        const response = await database_1.userModel.find({ mobileNumber: req.body.mobileNumber, isActive: true });
+        if (response.length === 0) {
+            return res.status(200).json(new common_1.apiResponse(200, 'Mobile Number does not exist', {}));
+        }
+        else {
+            return res.status(403).json(new common_1.apiResponse(403, 'Mobile Number already exists', {}));
+        }
+    }
+    catch (error) {
+        return res.status(500).json(new common_1.apiResponse(500, helpers_1.responseMessage?.internalServerError, error));
+    }
+};
+exports.validate = validate;
 //# sourceMappingURL=authentication.js.map

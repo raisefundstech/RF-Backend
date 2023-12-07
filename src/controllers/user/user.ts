@@ -188,18 +188,15 @@ export const getVolunteer = async (req: Request, res: Response) => {
 export const updateVolunteerPosition = async (req: Request, res: Response) => {
     reqInfo(req)
     let body = req.body, response, user: any = req.header('user');
-    let userAuthority = await userModel.findOne({ _id: ObjectId(user._id), isActive: true }, { userType: 1 })
+    let userAuthority = await userModel.findOne({ _id: ObjectId(user._id), isActive: true })
     try {
-        if ( userAuthority == 1 ) {
-            if (!body.workSpaceId) {
-                return res.status(404).json(new apiResponse(400, 'workSpaceId is required!', {}))
-            }
+        if (userAuthority.userStatus == 1) {
             response = await userModel.findOneAndUpdate({ _id: ObjectId(body.id), isActive: true }, body, { new: true })
         }
         if (response) {
-            return res.status(200).json(new apiResponse(200, 'Volunteer position or tags changed!', {}))
+            return res.status(200).json(new apiResponse(200, 'Volunteer information updated successfully!', {}))
         }
-        else return res.status(404).json(new apiResponse(404, 'Error occured while updating volunteer information', {}))
+        else return res.status(404).json(new apiResponse(404, 'You need to have admin privilages to update volunteer information', {}))
     } catch (error) {
         return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, error));
     }

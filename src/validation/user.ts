@@ -99,7 +99,10 @@ export const volunteerUpdate = async (req: Request, res: Response, next: any) =>
         id: Joi.string().trim().required().error(new Error('id is required!')),
         userType: Joi.number().allow(null).error(new Error('userType is number!')),
         tags: Joi.string().allow(null, "").error(new Error('tags is string!')),
-        workSpaceId: Joi.string().allow(null, "").error(new Error('workSpaceId is string!')),
+        workSpaceId: Joi.string().trim().required().error(new Error('workSpaceId is string!')),
+        userStatus: Joi.number().allow(null).error(new Error('userStatus is number!')),
+        isActive: Joi.boolean().allow(null).error(new Error('isActive is boolean!')),
+        notes: Joi.string().allow(null, "").error(new Error('notes is string!')),
     })
     schema.validateAsync(req.body).then(result => {
         if (!isValidObjectId(result.id)) return res.status(400).json(new apiResponse(400, responseMessage.invalidId('id'), {}));

@@ -48,6 +48,16 @@ const createEvent = async (req, res, next) => {
 };
 exports.createEvent = createEvent;
 const updateEvent = async (req, res, next) => {
+    const mongoose = require('mongoose');
+    const volunteerRequestSchema = new mongoose.Schema({
+        volunteerId: { type: mongoose.Schema.Types.ObjectId },
+        requestStatus: { type: String, default: "PENDING", enum: ["PENDING", "APPROVED", "DECLINED"] },
+        attendance: { type: Boolean, default: false },
+        appliedAt: { type: Date, default: new Date() },
+        checkedIn: { type: Boolean, default: false },
+        checkedOut: { type: Boolean, default: false },
+        userNote: { type: [{ type: String }], default: [] },
+    }, { _id: false }); // Add this line to disable automatic generation of _id for subdocuments
     const schema = Joi.object({
         id: Joi.string().trim().required().error(new Error('id is required!')),
         workSpaceId: Joi.string().trim().allow(null, "").error(new Error('workSpaceId is objectId!')),
@@ -60,6 +70,7 @@ const updateEvent = async (req, res, next) => {
         endTime: Joi.string().trim().allow(null, "").error(new Error('endTime is string!')),
         volunteerSize: Joi.number().allow(null).error(new Error('volunteerSize is number!')),
         notes: Joi.string().trim().allow(null, "").error(new Error('notes is string!')),
+        volunteerRequest: Joi.array().default([]),
     });
     schema.validateAsync(req.body).then(result => {
         if (!(0, mongoose_1.isValidObjectId)(result.id))

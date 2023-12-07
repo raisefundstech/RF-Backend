@@ -9,7 +9,6 @@ import { responseMessage } from '../helpers'
 import { generateVolunteerCode, generateOTP } from '../helpers/generateCode'
 import { sendEmail } from '../helpers/email'
 import { sendSMS,validOTP, sendLoginSMS } from '../helpers/message'
-import { send } from 'process'
 const twilio: any = config.get("twilio");
 const client = require('twilio')(twilio.accountSid, twilio.authToken);
 const ObjectId = require('mongoose').Types.ObjectId
@@ -19,51 +18,22 @@ const refresh_jwt_token_secret: any = config.get('refresh_jwt_token_secret')
 export const userSignUp = async (req: Request, res: Response) => {
     reqInfo(req)
     try {
-        
-        let body = req.body, otpFlag = 1, otp = 0
+        let body = req.body;
         let isAlready: any = await userModel.findOne({ $or: [{ email: body.email }, { mobileNumber: body.mobileNumber }], isActive: true })
         if (isAlready?.email == body?.email) return res.status(409).json(new apiResponse(409, responseMessage?.alreadyEmail, {}))
         if (isAlready?.mobileNumber == body?.mobileNumber) return res.status(409).json(new apiResponse(409, responseMessage?.alreadyMobileNumber, {}))
-
-        if (body.mobileNumber == "+91 8347055891") {
-            otp = 123456;
-        } else {
-            while (otpFlag == 1) {
-                for (let flag = 0; flag < 1;) {
-                    otp = await Math.round(Math.random() * 1000000)
-                    if (otp.toString().length == 6) {
-                        flag++
-                    }
-                }
-                let isAlreadyAssign = await userModel.findOne({ otp: otp })
-                if (isAlreadyAssign?.otp != otp) otpFlag = 0
-            }
-        }
-
-        body.otp = otp
-        body.otpExpireTime = new Date(new Date().setMinutes(new Date().getMinutes() + 5))
 
         body.volunteerId = await generateVolunteerCode();
 
         let response = await new userModel(body).save();
 
         if (response) {
-            client.messages
-                .create({
-                    body: `${response?.otp} is your OTP to registration in to Raise funds. Code will be expire in 5 minutes.`,
-                    to: response?.mobileNumber, // Text your number
-                    // from: '+19207543388', // From a valid Twilio number
-                    messagingServiceSid: twilio.messagingServiceSid
-                })
-                .then((message) => console.log(message.sid))
-                .catch(error => console.log(error));
-            return res.status(200).json(new apiResponse(200, `OTP has been sent to this ${body.mobileNumber}`, {}))
+            return res.status(200).json(new apiResponse(200, responseMessage.signupSuccess, {}))
         } else {
-            return res.status(501).json(new apiResponse(501, "Something went wrong", {}))
+            return res.status(501).json(new apiResponse(501, "Something went wrong", {response}))
         }
     } catch (error) {
         return res.status(500).json({error:error.message});
-        // return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, error))
     }
 }
 
@@ -293,3 +263,23 @@ export const userLogout = async (req: Request, res: Response) => {
         return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, error));
     }
 }
+
+/**
+ * Validates if a mobile number exists in the userModel.
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns The response with the validation result.
+ */
+export const validate = async (req: Request, res: Response) => {
+    reqInfo(req);
+    try {
+        const response = await userModel.find({ mobileNumber: req.body.mobileNumber, isActive: true });
+        if (response.length === 0) {
+            return res.status(200).json(new apiResponse(200, 'Mobile Number does not exist', {}));
+        } else {
+            return res.status(403).json(new apiResponse(403, 'Mobile Number already exists', {}));
+        }
+    } catch (error) {
+        return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, error));
+    }
+};
