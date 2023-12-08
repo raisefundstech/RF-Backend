@@ -110,6 +110,9 @@ export const getVolunteers = async (req: Request, res: Response) => {
                 phonenumber: "$mobileNumber",
                 isActive: 1,
                 workSpaceId: 1,
+                image: 1,
+                userType: 1,
+                userStatus: 1,
                 createdAt: 1
               },
             },
@@ -127,18 +130,6 @@ export const getVolunteers = async (req: Request, res: Response) => {
                   $regex: "\\+" + phonenumber,
                   $options: "i",
                 },
-              },
-            },
-            {
-              $match: {
-                isActive: true,
-                $or: [
-                  {
-                    workSpaceId: ObjectId(
-                        user?.workSpaceId
-                    ),
-                  },
-                ],
               },
             },
             {
