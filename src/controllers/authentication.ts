@@ -1,5 +1,5 @@
 "use strict"
-import { reqInfo } from '../helpers/winston_logger'
+import { reqInfo, logger } from '../helpers/winston_logger'
 import { userModel, userSessionModel } from '../database'
 import { apiResponse } from '../common'
 import jwt from 'jsonwebtoken'
@@ -59,10 +59,11 @@ export const userSignIn = async (req: Request, res: Response) => {
         const messageBody = `${findData?.otp} is your OTP to log in to Raise funds. Code will expire in 5 minutes.`;
 
         if (findData) {
-            var sms_response = sendLoginSMS(findData?.mobileNumber, messageBody);
-            console.log(sms_response);
-            if (sms_response) {
-                return res.status(200).json(new apiResponse(200, `OTP has been sent to this ${findData.mobileNumber}`, {}));
+            var sms_response = await sendLoginSMS(findData?.mobileNumber, messageBody);
+            logger.info(sms_response.MessageResponse);
+            var status = sms_response?.MessageResponse?.Result[findData?.mobileNumber]?.DeliveryStatus;
+            if (sms_response.$metadata?.httpStatusCode == 200) {
+                return res.status(200).json(new apiResponse(200, `OTP has been sent to this ${findData.mobileNumber}`, {status}));
             }
             // Temporary commented the email functionality to send the OTP
             // const emailResponse = await sendEmail(findData?.email, findData?.otp);
@@ -75,7 +76,7 @@ export const userSignIn = async (req: Request, res: Response) => {
         let error_message = 'SMS rejected for delivery to: ' + findData?.mobileNumber;
         return res.status(501).json(new apiResponse(501, 'Something went wrong', { error_message }));
     } catch (error) {
-        console.log(error);
+        logger.error(error);
         return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, error));
     }
 };

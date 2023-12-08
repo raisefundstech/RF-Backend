@@ -1,6 +1,5 @@
 "use strict";
 import multer from "multer";
-import AWS from "aws-sdk";
 import config from "config";
 import { logger, reqInfo } from "./winston_logger";
 import multerS3 from "multer-s3";
@@ -12,14 +11,9 @@ import { responseMessage } from "./response";
 const { S3Client } = require("@aws-sdk/client-s3");
 
 const aws: any = config.get("aws");
-const s3 = new AWS.S3({
-  accessKeyId: aws.accessKeyId,
-  secretAccessKey: aws.secretAccessKey,
-  region: aws.region,
-});
 const bucket_name = aws.bucket_name;
 const bucket_url = aws.bucket_url;
-const s3s = new S3Client({
+const s3 = new S3Client({
   region: aws.region,
   credentials: {
     accessKeyId: aws.accessKeyId,
@@ -112,7 +106,7 @@ export const compress_image = multer({
 
 export const uploadS3 = multer({
   storage: multerS3({
-    s3: s3s,
+    s3: s3,
     bucket: bucket_name,
     acl: "public-read",
     contentType: multerS3.AUTO_CONTENT_TYPE,

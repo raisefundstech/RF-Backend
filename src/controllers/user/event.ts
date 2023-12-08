@@ -3,6 +3,7 @@ import { reqInfo } from '../../helpers/winston_logger'
 import { apiResponse, notification_types, userStatus } from '../../common'
 import { Request, Response } from 'express'
 import { responseMessage } from '../../helpers'
+import { volunteerInfoByEvent } from '../../helpers/eventQueries'
 import { eventModel, notificationModel, roomModel, userModel } from '../../database'
 import { timeDifferences } from '../../helpers/timeDifference'
 import { notification_to_multiple_user, notification_to_user } from '../../helpers/notification'
@@ -131,44 +132,8 @@ export const getEventById = async (req: Request, res: Response) => {
     let user: any = req.header('user'), response: any
     let userStatus = await userModel.findOne({ _id: ObjectId(user._id) }, { userType: 1 });
     try {
-        response = await eventModel.aggregate([
-            {
-                $match: {
-                    _id: ObjectId(req.params.id), isActive: true
-                }
-            },
-            {
-                $project: {
-                    workSpaceId: 1,
-                    name: 1,
-                    address: 1,
-                    latitude: 1,
-                    longitude: 1,
-                    date: 1,
-                    startTime: 1,
-                    endTime: 1,
-                    volunteerSize: 1,
-                    notes: 1,
-                    isGroupCreated: 1,
-                    createdBy: 1,
-                    volunteerRequest: 1,
-                    isApply: {
-                        $cond: [{
-                            $eq: [{
-                                $filter: {
-                                    input: '$volunteerRequest',
-                                    as: 'volunteerRequest',
-                                    cond: { $eq: ['$$volunteerRequest.volunteerId', ObjectId(user._id)] }
-                                }
-                            }, []]
-                        }, false, true]
-                    },
-                    isEventOwn: {
-                        $cond: [{ $eq: ['$createdBy', ObjectId(user._id)] }, true, false]
-                    }
-                }
-            }
-        ]);
+        const pipeline = await volunteerInfoByEvent(req, user);
+        response = await eventModel.aggregate(pipeline);
         // If the userStatus represent the user is a volunteer delete the volunteerRequest from the response
         if(userStatus?.userType === 0){
             delete response[0]?.volunteerRequest;
