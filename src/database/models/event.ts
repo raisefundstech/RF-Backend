@@ -11,6 +11,7 @@ const eventSchema: any = new mongoose.Schema({
     endTime: { type: Date, default: null },
     volunteerSize: { type: Number, default: 0 },
     notes: { type: String, default: null },
+    rfCoins : { type: Number, default: 0 },
     volunteerRequest: {
         type: [{
             volunteerId: { type: mongoose.Schema.Types.ObjectId },

@@ -4,6 +4,7 @@ import { userJWT } from '../helpers/jwt'
 import { eventValidation, ourTeamValidation, userValidation, workSpaceValidation } from '../validation'
 const router = express.Router()
 
+router.get('/unverified/volunteers', userValidation.checkWorkSpaceId, userController.getUnverifiedVolunteers)
 router.post('/signUp', userValidation?.userSignUp, authenticationController?.userSignUp)
 router.post('/login', userValidation?.userSignIn, authenticationController?.userSignIn)
 router.post('/otpVerification', userValidation?.otpVerification, authenticationController?.otpVerification)
@@ -54,8 +55,7 @@ router.put('/event/volunteers/add', userController.addVolunteerToEvent)
 
 //  -------  Volunteers  -------
 router.get('/volunteers', userController.getVolunteers)
-router.get('/volunteer/:id',userValidation.by_id, userController.getVolunteer),
-router.get('/unverified/volunteers', userValidation.checkWorkSpaceId, userController.getUnverifiedVolunteers),
+router.get('/volunteer/:id',userValidation.by_id, userController.getVolunteer)
 router.put('/volunteer/position', userValidation.volunteerUpdate, userController.updateVolunteerPosition)
 router.post('/volunteer/add', userValidation.userSignUp, userController.addVolunteer)
 
