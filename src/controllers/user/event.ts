@@ -3,6 +3,7 @@ import { reqInfo } from '../../helpers/winston_logger'
 import { apiResponse, notification_types, userStatus } from '../../common'
 import { Request, Response } from 'express'
 import { responseMessage } from '../../helpers'
+import { volunteerInfoByEvent } from '../../helpers/eventQueries'
 import { eventModel, notificationModel, roomModel, userModel } from '../../database'
 import { timeDifferences } from '../../helpers/timeDifference'
 import { notification_to_multiple_user, notification_to_user } from '../../helpers/notification'
@@ -13,76 +14,6 @@ export const getEvents = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any, isVolunteer: any = req.query.isVolunteer;
     try {
-        // response = await eventModel.find({ isActive: true })
-        console.time('mongoconntime');
-        // response = await eventModel.aggregate([
-        //     { $match: { isActive: true } },
-        //     {
-        //         $lookup: {
-        //             from: "users",
-        //             let: { volunteerIds: "$volunteerRequest.volunteerId" },
-        //             pipeline: [
-        //                 {
-        //                     $match: {
-        //                         $expr: {
-        //                             $and: [
-        //                                 { $in: ["$_id", "$$volunteerIds"] }
-        //                             ]
-        //                         }
-        //                     }
-        //                 },
-        //                 { $project: { firstName: 1, lastName: 1, tags: 1, workTime: 1, RBSId: 1, image: 1 } }
-        //             ],
-        //             as: 'volunteerData'
-        //         }
-        //     },
-        //     { $sort: { startTime: -1 } },
-        //     {
-        //         $project: {
-        //             workSpaceId: 1,
-        //             name: 1,
-        //             address: 1,
-        //             latitude: 1,
-        //             longitude: 1,
-        //             date: 1,
-        //             startTime: 1,
-        //             endTime: 1,
-        //             volunteerSize: 1,
-        //             notes: 1,
-        //             isActive: 1,
-        //             isGroupCreated: 1,
-        //             createdBy: 1,
-        //             volunteerRequest: {
-        //                 $map: {
-        //                     input: "$volunteerRequest",
-        //                     as: "request",
-        //                     in: {
-        //                         _id: "$$request._id",
-        //                         volunteerId: "$$request.volunteerId",
-        //                         requestStatus: "$$request.requestStatus",
-        //                         attendance: "$$request.attendance",
-        //                         volunteerData: {
-        //                             $arrayElemAt: [
-        //                                 {
-        //                                     $filter: {
-        //                                         input: "$volunteerData",
-        //                                         cond: { $eq: ["$$this._id", "$$request.volunteerId"] }
-        //                                     }
-        //                                 },
-        //                                 0
-        //                             ]
-        //                         }
-        //                     }
-        //                 }
-        //             },
-        //             isEventOwn: {
-        //                 $cond: [{ $eq: ['$createdBy', ObjectId(user._id)] }, true, false]
-        //             },
-        //             createdAt: 1,
-        //             updatedAt: 1,
-        //         }
-        //     }
-        // ])
         response = await eventModel.aggregate([
             { $match: { isActive: true } },
             { $sort: { startTime: -1 } },
@@ -91,30 +22,35 @@ export const getEvents = async (req: Request, res: Response) => {
                     workSpaceId: 1,
                     name: 1,
                     address: 1,
-                    // latitude: 1,
-                    // longitude: 1,
                     date: 1,
                     startTime: 1,
                     endTime: 1,
                     volunteerSize: 1,
                     notes: 1,
                     isActive: 1,
-                    isGroupCreated: 1,
                     createdBy: 1,
+                    volunteerRequest: {
+                        $filter: {
+                            input: "$volunteerRequest",
+                            as: "volunteer",
+                            cond: {
+                                $eq: ["$$volunteer.volunteerId", ObjectId(user._id)]
+                            }
+                        }
+                    },
                     isEventOwn: {
                         $cond: [{ $eq: ['$createdBy', ObjectId(user._id)] }, true, false]
-                    }
-                    // createdAt: 1,
-                    // updatedAt: 1,
+                    },
+                    createdAt: 1,
+                    updatedAt: 1,
                 }
             }
         ]);
-        console.timeEnd('mongoconntime');
+        // console.timeEnd('mongoconntime');
         if (response) return res.status(200).json(new apiResponse(200, responseMessage.getDataSuccess('events'), response))
         else return res.status(404).json(new apiResponse(404, responseMessage.getDataNotFound('events'), {}))
     } catch (error) {
-        console.log(error);
-
+        // console.log(error);
         return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, error));
     }
 }
@@ -124,7 +60,6 @@ export const createEvent = async (req: Request, res: Response) => {
     let user: any = req.header('user'), response: any, body = req.body, newEventCreateData: any;
     try {
         body.createdBy = user?._id;
-
         if (new Date(body.startTime) < new Date() || new Date(body.endTime) < new Date() || new Date(body.startTime).toString() == new Date(body.endTime).toString()) return res.status(400).json(new apiResponse(400, "Invalid start time or end time!", {}))
         if (body.volunteerSize < 2) return res.status(400).json(new apiResponse(400, "Please add volunteer size more than 1 . ", {}))
         response = await new eventModel(body).save();
@@ -142,9 +77,7 @@ export const createEvent = async (req: Request, res: Response) => {
                     }
                 }
             });
-
             let findUserData = await userModel.find({ userType: 0, isActive: true, workSpaceId: ObjectId(response?.workSpaceId) }, { firstName: 1, lastName: 1, device_token: 1 });
-
             let userArr = [];
             await findUserData.map((e) => { userArr.push(e._id) })
             let title = `New event created`;
@@ -176,13 +109,14 @@ export const updateEvent = async (req: Request, res: Response) => {
     let user: any = req.header('user'), response: any, body = req.body;
     try {
         body.updatedBy = user?._id;
+        // only admin and super volunteer can update the event
         if (body.startTime || body.endTime) {
             if (new Date(body.startTime) < new Date() || new Date(body.endTime) < new Date() || new Date(body.startTime).toString() == new Date(body.endTime).toString()) return res.status(400).json(new apiResponse(400, "Invalid start time or end time!", {}))
         }
         if (body.volunteerSize) {
             if (body.volunteerSize < 2) return res.status(400).json(new apiResponse(400, "Please add volunteer size more than 1 . ", {}))
         }
-        response = await eventModel.findOneAndUpdate({ _id: ObjectId(body.id), isActive: true, startTime: { $gte: new Date() } }, body, { new: true });
+        response = await eventModel.findOneAndUpdate({ _id: ObjectId(body.id), isActive: true }, body, { new: true });
         if (response) {
             let updateRoomName = await roomModel.findOneAndUpdate({ eventId: ObjectId(response?._id), isActive: true }, { roomName: response?.name + " " + "group" })
             return res.status(200).json(new apiResponse(200, responseMessage.updateDataSuccess('event'), {}))
@@ -196,53 +130,14 @@ export const updateEvent = async (req: Request, res: Response) => {
 export const getEventById = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any
+    let userStatus = await userModel.findOne({ _id: ObjectId(user._id) }, { userType: 1 });
     try {
-        // response = await eventModel.findOne({ _id: ObjectId(req.params.id), isActive: true });
-        response = await eventModel.aggregate([
-            {
-                $match: {
-                    _id: ObjectId(req.params.id), isActive: true
-                }
-            },
-            {
-                $project: {
-                    workSpaceId: 1,
-                    name: 1,
-                    address: 1,
-                    latitude: 1,
-                    longitude: 1,
-                    date: 1,
-                    startTime: 1,
-                    endTime: 1,
-                    volunteerSize: 1,
-                    notes: 1,
-                    isGroupCreated: 1,
-                    createdBy: 1,
-                    volunteerRequest: {
-                        $filter: {
-                            input: '$volunteerRequest',
-                            as: 'volunteerRequest',
-                            cond: { $eq: ['$$volunteerRequest.volunteerId', ObjectId(user._id)] }
-                        }
-                    },
-                    isApply: {
-                        $cond: [{
-                            $eq: [{
-                                $filter: {
-                                    input: '$volunteerRequest',
-                                    as: 'volunteerRequest',
-                                    cond: { $eq: ['$$volunteerRequest.volunteerId', ObjectId(user._id)] }
-                                }
-                            }, []]
-
-                        }, false, true]
-                    },
-                    isEventOwn: {
-                        $cond: [{ $eq: ['$createdBy', ObjectId(user._id)] }, true, false]
-                    }
-                }
-            }
-        ]);
+        const pipeline = await volunteerInfoByEvent(req, user);
+        response = await eventModel.aggregate(pipeline);
+        // If the userStatus represent the user is a volunteer delete the volunteerRequest from the response
+        if(userStatus?.userType === 0){
+            delete response[0]?.volunteerRequest;
+        }
         if (response) return res.status(200).json(new apiResponse(200, responseMessage.getDataSuccess('event'), response[0]))
         else return res.status(400).json(new apiResponse(400, responseMessage.getDataNotFound('event'), {}))
     } catch (error) {
@@ -547,7 +442,6 @@ export const changeEventRequestStatus = async (req: Request, res: Response) => {
         if (body[0]?.requestStatus == "APPROVED") {
             getEvent = await eventModel.findOne({ _id: ObjectId(body[0].id) })
             let responseData = getEvent?.volunteerRequest.filter(data => data.requestStatus === "APPROVED");
-
             if (getEvent?.volunteerSize < (responseData.length + body.length)) {
                 return res.status(400).json(new apiResponse(400, `You can not approve volunteers because only ${getEvent?.volunteerSize} volunteer will be participate in this event`, {}))
             }
@@ -564,10 +458,8 @@ export const changeEventRequestStatus = async (req: Request, res: Response) => {
                 "volunteerRequest.$": 1
             });
 
-            if (body[0]?.requestStatus == "APPROVED") {
-                if (new Date(findEvent?.volunteerRequest[0]?.appliedAt) > new Date(getEvent.startTime)) {
+            if (body[0]?.requestStatus == "APPROVED" && findEvent?.volunteerRequest[0]?.checkedIn == true && findEvent?.volunteerRequest[0]?.checkedOut == true) { 
                     match['volunteerRequest.$.attendance'] = true;
-                }
             }
 
             response = await eventModel.findOneAndUpdate({
@@ -664,7 +556,6 @@ export const getVolunteerByEventAttendance = async (req: Request, res: Response)
     reqInfo(req)
     let user: any = req.header('user'), response: any, body = req.body, match = []
     try {
-
         response = await eventModel.aggregate([
             { $match: { _id: ObjectId(req.params.id), isActive: true } },
             {

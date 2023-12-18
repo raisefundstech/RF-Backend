@@ -4,11 +4,13 @@ import { userJWT } from '../helpers/jwt'
 import { eventValidation, ourTeamValidation, userValidation, workSpaceValidation } from '../validation'
 const router = express.Router()
 
+router.get('/unverified/volunteers', userValidation.checkWorkSpaceId, userController.getUnverifiedVolunteers)
 router.post('/signUp', userValidation?.userSignUp, authenticationController?.userSignUp)
 router.post('/login', userValidation?.userSignIn, authenticationController?.userSignIn)
 router.post('/otpVerification', userValidation?.otpVerification, authenticationController?.otpVerification)
-router.post('/resendOTP', userValidation.resendOTP, authenticationController?.resendOTP)
+// router.post('/resendOTP', userValidation.resendOTP, authenticationController?.resendOTP)
 router.get('/workSpaces', userController.getWorkSpace)
+router.post('/validate', userValidation?.userSignIn, authenticationController?.validate)
 router.post('/sendOTP', userValidation.resendOTP, authenticationController?.sendOTP)
 router.post('/verifyOTP', userValidation.verifyOTP, authenticationController?.verifyOTP)
 // router.get('/addColumn', userController.add_column)
@@ -53,6 +55,7 @@ router.put('/event/volunteers/add', userController.addVolunteerToEvent)
 
 //  -------  Volunteers  -------
 router.get('/volunteers', userController.getVolunteers)
+router.get('/volunteer/:id',userValidation.by_id, userController.getVolunteer)
 router.put('/volunteer/position', userValidation.volunteerUpdate, userController.updateVolunteerPosition)
 router.post('/volunteer/add', userValidation.userSignUp, userController.addVolunteer)
 
@@ -71,6 +74,8 @@ router.get('/room/get/:id', eventValidation.by_id, userController.get_room_v1)
 // -------  Message Routes -------
 router.get('/message', userController.get_message)
 
+// ------ Deletion ------------
 router.delete('/deleteUser', userController.deleteUser)
-
+router.delete('/logout',userController.logoutUser)
+// 
 export const userRouter = router;

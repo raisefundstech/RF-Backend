@@ -18,6 +18,7 @@ export const userSignUp = async (req: Request, res: Response, next: any) => {
         workSpaceId: Joi.string().trim().required().error(new Error('workSpaceId is required!')),
         image: Joi.string().trim().allow(null, "").error(new Error('image is string!')),
         userType: Joi.number().allow(null).error(new Error('userType is number!')),
+        userStatus: Joi.number().allow(null).error(new Error('userStatus is number!')),
         universityName: Joi.string().trim().allow(null, "").error(new Error('universityName is string!')),
         major: Joi.string().trim().allow(null, "").error(new Error('major is string!')),
         yearOfEducationCompletion: Joi.string().trim().allow(null, "").error(new Error('yearOfEducationCompletion is string!')),
@@ -98,7 +99,10 @@ export const volunteerUpdate = async (req: Request, res: Response, next: any) =>
         id: Joi.string().trim().required().error(new Error('id is required!')),
         userType: Joi.number().allow(null).error(new Error('userType is number!')),
         tags: Joi.string().allow(null, "").error(new Error('tags is string!')),
-        workSpaceId: Joi.string().allow(null, "").error(new Error('workSpaceId is string!')),
+        workSpaceId: Joi.string().trim().required().error(new Error('workSpaceId is string!')),
+        userStatus: Joi.number().allow(null).error(new Error('userStatus is number!')),
+        isActive: Joi.boolean().allow(null).error(new Error('isActive is boolean!')),
+        notes: Joi.string().allow(null, "").error(new Error('notes is string!')),
     })
     schema.validateAsync(req.body).then(result => {
         if (!isValidObjectId(result.id)) return res.status(400).json(new apiResponse(400, responseMessage.invalidId('id'), {}));
@@ -107,4 +111,17 @@ export const volunteerUpdate = async (req: Request, res: Response, next: any) =>
     }).catch(error => {
         res.status(400).json(new apiResponse(400, error.message, {}))
     })
+}
+
+export const by_id = async (req: Request, res: Response, next: any) => {
+    if (!isValidObjectId(req.params.id)) return res.status(400).json(new apiResponse(400, responseMessage.invalidId('id'), {}));
+    next()
+}
+
+export const checkWorkSpaceId = async (req: Request, res: Response, next: any) => {
+    const workSpaceId = req.query.workSpaceId as string;
+    if (!workSpaceId) {
+        return res.status(400).json(new apiResponse(400, responseMessage.invalidId('workSpaceId'), {}));
+    }
+    next();
 }

@@ -11,12 +11,16 @@ const eventSchema: any = new mongoose.Schema({
     endTime: { type: Date, default: null },
     volunteerSize: { type: Number, default: 0 },
     notes: { type: String, default: null },
+    rfCoins : { type: Number, default: 0 },
     volunteerRequest: {
         type: [{
             volunteerId: { type: mongoose.Schema.Types.ObjectId },
-            requestStatus: { type: String, default: "PENDING", enum: ["PENDING", "APPROVED", "DECLINED"] },
+            requestStatus: { type: String, default: "PENDING", enum: ["PENDING", "APPROVED", "DECLINED"] },            
             attendance: { type: Boolean, default: false },
-            appliedAt: { type: Date, default: new Date() }
+            appliedAt: { type: Date, default: new Date() },
+            checkedIn: { type: Boolean, default: false },
+            checkedOut: { type: Boolean, default: false },
+            userNote: { type: [{ type: String }], default: [] },
         }], default: []
     },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "user" },

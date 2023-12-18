@@ -71,3 +71,8 @@ export const createRoom = new CronJob('* * * * *', async () => {
     }
     logger.info('Create Room Cron Job Finished')
 })
+
+// Returns the current timestamp in Unix format 
+export function getCurrentUnixTimestamp() {
+    return Math.floor(Date.now() / 1000); // returning the date in foramt of seconds
+}

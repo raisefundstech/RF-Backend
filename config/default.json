@@ -20,11 +20,11 @@
     "password": "gglqempamiijpmcl",
     "service": "gmail"
   },
-  "twilio": {
-    "accountSid": "AC13336faa8854f1c8bb623c9390ad5a26",
-    "authToken": "f4f01f3d732437edb6b8b897fd09a416",
-    "from":"+13159292023",
-    "messagingServiceSid": "MGc36e1d3d965ee9a5c644aa6b6fa39bc3"
+  "awsPinpoint" : {
+    "applicationId" : "d3fb72c2dfab496ba9565cf2d1c8770a",
+    "region" : "us-east-1",
+    "senderId" : "RaiseFunds",
+    "originNumber" : "+18669846974"
   },
   "fcmKey": "AAAAc1gQklI:APA91bHypiAZG9QnfYtaTeHrtud_PbIX5cqID2BhmQfNMxxwifekXgI0I8JnWgtzLX5P4EWp4vwjMPjPymKbu10vVUXg1tgOhBb6MUCZPeB-Vie035BchvR5GrP40wDC3ktsrOl8CI67"
 }
