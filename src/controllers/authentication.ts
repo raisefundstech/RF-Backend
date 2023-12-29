@@ -160,7 +160,7 @@ export const sendOTP = async (req: Request, res: Response) => {
         "mobileNumber" : mobileNumber
     }
     const response = await sendSMS(receiver);
-    console.log(response);
+    // console.log(response);
     var sms_response = {
         ApplicationId : response?.MessageResponse?.ApplicationId,
         requestId : response?.MessageResponse?.RequestId,

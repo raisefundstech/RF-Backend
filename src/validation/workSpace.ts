@@ -38,7 +38,7 @@ export const updateWorkSpace = async (req: Request, res: Response, next: any) =>
 }
 
 export const by_id = async (req: Request, res: Response, next: any) => {
-    console.log(req.params);
+    // console.log(req.params);
     if (!isValidObjectId(req.params.id)) return res.status(400).json(new apiResponse(400, responseMessage.invalidId('id'), {}));
     next()
 }
