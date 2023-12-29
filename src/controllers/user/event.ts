@@ -1,12 +1,12 @@
 import async from 'async'
 import { reqInfo } from '../../helpers/winston_logger'
-import { apiResponse, notification_types, userStatus } from '../../common'
+import { apiResponse, notification_types } from '../../common'
 import { Request, Response } from 'express'
 import { responseMessage } from '../../helpers'
-import { volunteerInfoByEvent } from '../../helpers/eventQueries'
+import { volunteerInfoByEvent, applyOnEvent, withdrawFromEvent, updateVolunteersRequestStatus, fetchAdminsAndSuperVolunteers } from '../../helpers/eventQueries'
 import { eventModel, notificationModel, roomModel, userModel } from '../../database'
 import { timeDifferences } from '../../helpers/timeDifference'
-import { notification_to_multiple_user, notification_to_user } from '../../helpers/notification'
+import { sendNotification, fetchUserTokens, mapTokensToUser } from '../../helpers/notification'
 
 const ObjectId = require('mongoose').Types.ObjectId
 
@@ -71,31 +71,32 @@ export const createEvent = async (req: Request, res: Response) => {
                 $push: {
                     volunteerRequest: {
                         volunteerId: ObjectId(user._id),
-                        requestStatus: "APPROVED",
+                        requestStatus: "PENDING",
                         attendance: true,
                         appliedAt: new Date()
                     }
                 }
             });
-            let findUserData = await userModel.find({ userType: 0, isActive: true, workSpaceId: ObjectId(response?.workSpaceId) }, { firstName: 1, lastName: 1, device_token: 1 });
-            let userArr = [];
-            await findUserData.map((e) => { userArr.push(e._id) })
+            let userData = await userModel.find({ userType: 0, isActive: true, workSpaceId: ObjectId(response?.workSpaceId) }, { firstName: 1, lastName: 1, device_token: 1 });
             let title = `New event created`;
-            let message = `Hello, New Fundraising event has been created for volunteers opportunities by the raise funds. please apply on this event.`;
-            newEventCreateData = await notification_types.event_request_approved({ title, message, eventId: ObjectId(response._id) })
-            await async.parallel([
-                (callback) => {
-                    new notificationModel({
-                        title: title,
-                        description: newEventCreateData.template.body,
-                        notificationData: newEventCreateData.data,
-                        notificationType: newEventCreateData.data.type,
-                        eventId: ObjectId(response?._id),
-                        createdBy: ObjectId(user?._id),
-                        receivedIds: userArr,
-                    }).save().then(data => { callback(null, data) }).catch(err => { console.log(err) })
-                }])
-            await async.parallel([(callback) => { notification_to_multiple_user(findUserData, newEventCreateData?.data, newEventCreateData?.template).then(data => { callback(null, data) }).catch(err => { console.log(err) }) }])
+            const date = new Date(body.date);
+            const formattedDate = date.toLocaleString('en-US', { month: 'short', day: '2-digit' });
+            let message = `Hello, New event has been created for ${body.address} on ${formattedDate}. please apply on this event.`;
+            const updatePromises = userData.map(async (data: any) => {
+                const tokens: string[] = data?.device_token;
+                const userTokenMapper = mapTokensToUser(data?._id, tokens);
+                const payload = {
+                    title: title,
+                    message: message,
+                    data: {
+                        type: 1,
+                        eventId: response?._id
+                    }
+                };
+                sendNotification(tokens, userTokenMapper, payload);
+            })
+            // await Promise.all(updatePromises);
+            // await async.parallel([(callback) => { notification_to_multiple_user(findUserData, newEventCreateData?.data, newEventCreateData?.template).then(data => { callback(null, data) }).catch(err => { console.log(err) }) }])
             return res.status(200).json(new apiResponse(200, responseMessage.addDataSuccess('event'), response))
         }
         else return res.status(400).json(new apiResponse(400, responseMessage.addDataError, {}))
@@ -257,119 +258,132 @@ export const get_event_pagination = async (req: Request, res: Response) => {
     }
 }
 
-export const applyOnEvent = async (req: Request, res: Response) => {
+// task: minimize the function code for apply witddraw and updateVolunteers to reduce code duplication
+// requires workspaceId for this 
+export const apply = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any, body = req.body, match: any = {}, findUser: any
     try {
-        if (body.event == 0) {
-            if (body.requestId) {
-                response = await eventModel.findOneAndUpdate({
-                    _id: ObjectId(body.id),
-                    isActive: true,
-                    volunteerRequest: {
-                        $elemMatch: { _id: ObjectId(body.requestId) }
-                    }
-                }, {
-                    $set: {
-                        'volunteerRequest.$.requestStatus': "PENDING",
-                        'volunteerRequest.$.appliedAt': new Date()
-                    },
-                }, { new: true });
-
-                let findEvent = await eventModel.findOne({
-                    _id: ObjectId(body.id),
-                    isActive: true,
-                    volunteerRequest: {
-                        $elemMatch: { _id: ObjectId(body.requestId) }
-                    }
-                }, {
-                    "volunteerRequest.$": 1
-                });
-
-                findUser = await userModel.findOne({ _id: ObjectId(findEvent?.volunteerRequest[0]?.volunteerId) });
-            } else {
-                response = await eventModel.findOneAndUpdate({
-                    _id: ObjectId(body.id),
-                    isActive: true
-                }, {
-                    $push: {
-                        volunteerRequest: {
-                            volunteerId: ObjectId(user._id),
-                            appliedAt: new Date()
-                        }
-                    }
-                }, { new: true });
-                findUser = await userModel.findOne({ _id: ObjectId(user._id) });
-            }
-
-            let findDeviceToken = await userModel.findOne({ _id: ObjectId(response?.createdBy) }, { firstName: 1, lastName: 1, device_token: 1 });
-
-            if (findDeviceToken?.device_token.length > 0) {
-                let title = `Apply on event`;
-                let message = `Hello, ${findUser?.firstName} ${(findUser?.lastName)} has applied to this event name ${response.name}. please approve or declined the user participation.`;
-                let eventApply = await notification_types.event_request_approved({ title, message, eventId: ObjectId(body.id) });
-                await async.parallel([
-                    (callback) => {
-                        new notificationModel({
-                            title: title,
-                            description: eventApply.template.body,
-                            notificationData: eventApply.data,
-                            notificationType: eventApply.data.type,
-                            eventId: ObjectId(body?.id),
-                            createdBy: ObjectId(user?._id),
-                            receivedBy: ObjectId(findDeviceToken?._id),
-                        }).save().then(data => { callback(null, data) }).catch(err => { console.log(err) })
-                    },
-                    (callback) => { notification_to_user(findDeviceToken, eventApply?.data, eventApply?.template).then(data => { callback(null, data) }).catch(err => { console.log(err) }) }
-                ])
-            }
-
-            if (response) return res.status(200).json(new apiResponse(200, 'You have successfully requested in event!, Your request is in PENDING status.', {}))
-            else return res.status(400).json(new apiResponse(400, "You have not requested in this event!", {}))
+        const result = await applyOnEvent(req,user?._id);
+        if(result?.error){
+            throw new Error(result.error);
         }
+        response = await fetchAdminsAndSuperVolunteers(body?.workSpaceId)
+        if(response?.error){
+            throw new Error(result.error);
+        }
+        const updatePromises = response.map(async (data: any) => {
+            const tokens: string[] = data?.device_token;
+            const userTokenMapper = mapTokensToUser(data?._id, tokens);
 
-        if (body.event == 1) {
-            response = await eventModel.findOneAndUpdate({
-                _id: ObjectId(body.id),
-                isActive: true
-            }, {
-                $pull: {
-                    volunteerRequest: {
-                        volunteerId: ObjectId(user._id)
-                    }
+            const findUser = await userModel.findOne({ _id: ObjectId(user?._id)});
+            const date = new Date(body.date);
+            const formattedDate = date.toLocaleString('en-US', { month: 'short', day: '2-digit' });
+
+            const payload = {
+                title: `Apply on event`,
+                message: `Hello, ${findUser?.firstName} ${(findUser?.lastName)} has applied to this event name ${body.name} on ${formattedDate}. please approve or declined the user participation.`,
+                data: {
+                    type: 1,
+                    eventId: result?._id
                 }
-            })
-
-            findUser = await userModel.findOne({ _id: ObjectId(user._id) });
-
-            let findDeviceToken = await userModel.findOne({ _id: ObjectId(response?.createdBy) }, { firstName: 1, lastName: 1, device_token: 1 });
-
-            if (findDeviceToken?.device_token.length > 0) {
-                let title = `withdraw event request`;
-                let message = `Hello, ${findUser?.firstName} ${(findUser?.lastName)} withdraw from this event name ${response.name}.`;
-                let eventApply = await notification_types.event_request_approved({ title, message, eventId: ObjectId(body.id) });
-                await async.parallel([
-                    (callback) => {
-                        new notificationModel({
-                            title: title,
-                            description: eventApply.template.body,
-                            notificationData: eventApply.data,
-                            notificationType: eventApply.data.type,
-                            eventId: ObjectId(body?.id),
-                            createdBy: ObjectId(user?._id),
-                            receivedBy: ObjectId(findDeviceToken?._id),
-                        }).save().then(data => { callback(null, data) }).catch(err => { console.log(err) })
-                    },
-                    (callback) => { notification_to_user(findDeviceToken, eventApply?.data, eventApply?.template).then(data => { callback(null, data) }).catch(err => { console.log(err) }) }
-                ])
-            }
-            if (response) return res.status(200).json(new apiResponse(200, 'You have successfully deleted event request!', {}))
-            else return res.status(400).json(new apiResponse(400, "You have not delete request in this event!", {}))
-        }
+            };
+            sendNotification(tokens, userTokenMapper, payload);
+        });
+        // Wait for all promises to complete
+        // await Promise.all(updatePromises);
+        return res.status(200).json(new apiResponse(200, "You have succeessfully applied for the event", {}));
     } catch (error) {
-        return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, error));
+        return res.status(500).json(new apiResponse(500, responseMessage?.customMessage(error), {}));
     }
 }
+
+export const withdraw = async (req: Request, res: Response) => {
+    reqInfo(req)
+    let user: any = req.header('user'), response: any, body = req.body, match: any = {}, findUser: any
+    try {
+        const result = await withdrawFromEvent(req)
+        if(result?.error){
+            throw new Error(result.error);
+        }
+        response = await fetchAdminsAndSuperVolunteers(body?.workSpaceId)
+        if(response?.error){
+            throw new Error(result.error);
+        }
+        const updatePromises = response.map(async (data: any) => {
+            const tokens: string[] = data?.device_token;
+            const userTokenMapper = mapTokensToUser(data?._id, tokens);
+
+            const findUser = await userModel.findOne({ _id: ObjectId(user?._id)});
+            const date = new Date(body.date);
+            const formattedDate = date.toLocaleString('en-US', { month: 'short', day: '2-digit' });
+
+            const payload = {
+                title: `Apply on event`,
+                message: `Hello, ${findUser?.firstName} ${(findUser?.lastName)} has withdrawn from this event name ${body.name} on ${formattedDate}.`,
+                data: {
+                    type: 1,
+                    eventId: result?._id
+                }
+            };
+            sendNotification(tokens, userTokenMapper, payload);
+        });
+        // Wait for all promises to complete
+        // await Promise.all(updatePromises);
+        return res.status(200).json(new apiResponse(200, "You have successfully withdrawn from the event", {}));
+    } catch (error) {
+        return res.status(500).json(new apiResponse(500, responseMessage?.customMessage(error),{}));
+    }
+}
+
+export const updateVolunteers = async (req: Request, res: Response) => {
+    reqInfo(req);
+    try {
+        let user: any = req.header('user'), userTokenMapper: any = {}, payload: any = {};
+        const body = req.body;
+
+        let userAuthority = await userModel.findOne({ _id: ObjectId(user?._id) }, { userType: 1 });
+
+        if(userAuthority?.userType === 0){
+            throw new Error("You are not authorized to update event status.");
+        }
+
+        // Use Promise.all to execute updateVolunteersRequestStatus for each volunteerRequest
+        const updatePromises = body.volunteerRequest.map(async (data: any) => {
+            const result = await updateVolunteersRequestStatus(req, data?.volunteerId, data?.requestStatus);
+
+            if (result?.error) {
+                throw new Error(result.error);
+            }
+
+            // Fetch user tokens and send notifications concurrently
+            const tokens: any[] = await fetchUserTokens(data?.volunteerId);
+
+            if (tokens.length > 0) {
+
+                userTokenMapper = mapTokensToUser(data?.volunteerId, tokens);
+                const date = new Date(body.date);
+                const formattedDate = date.toLocaleString('en-US', { month: 'short', day: '2-digit' });
+
+                payload = {
+                    title: `Event request ${result?.requestStatus}`,
+                    message: `Hello, ${result?.firstName} your event request has been ${result?.requestStatus} for the ${body.address} on ${formattedDate}.`,
+                    data: {
+                        type: 1,
+                        eventId: result?._id
+                    }
+                };
+                sendNotification(tokens, userTokenMapper, payload);
+            }
+        });
+        // Wait for all promises to complete
+        // await Promise.all(updatePromises);
+        return res.status(200).json(new apiResponse(200, "Volunteers event status has been updated successfully", {}));
+    } catch (error) {
+        return res.status(500).json(new apiResponse(500, responseMessage?.customMessage(error), error));
+    }
+};
+
 
 export const get_event_pagination_for_volunteers = async (req: Request, res: Response) => {
     reqInfo(req)
@@ -495,7 +509,7 @@ export const changeEventRequestStatus = async (req: Request, res: Response) => {
                             receivedBy: ObjectId(findUser?._id),
                         }).save().then(data => { callback(null, data) }).catch(err => { console.log(err) })
                     },
-                    (callback) => { notification_to_user(findUser, eventApprovedOrDeclined?.data, eventApprovedOrDeclined?.template).then(data => { callback(null, data) }).catch(err => { console.log(err) }) }
+                    // (callback) => { notification_to_user(findUser, eventApprovedOrDeclined?.data, eventApprovedOrDeclined?.template).then(data => { callback(null, data) }).catch(err => { console.log(err) }) }
                 ])
             }
         }
@@ -689,7 +703,7 @@ export const addEventAttendance = async (req: Request, res: Response) => {
                                 receivedBy: ObjectId(getUser?._id),
                             }).save().then(data => { callback(null, data) }).catch(err => { console.log(err) })
                         },
-                        (callback) => { notification_to_user(getUser, eventAttendanceData?.data, eventAttendanceData?.template).then(data => { callback(null, data) }).catch(err => { console.log(err) }) }
+                        // (callback) => { notification_to_user(getUser, eventAttendanceData?.data, eventAttendanceData?.template).then(data => { callback(null, data) }).catch(err => { console.log(err) }) }
                     ])
                 }
             }

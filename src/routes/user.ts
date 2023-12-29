@@ -45,7 +45,7 @@ router.post('/event/add', eventValidation.createEvent, userController.createEven
 router.get('/event/:id', eventValidation.by_id, userController.getEventById)
 router.put('/event/update', eventValidation.updateEvent, userController.updateEvent)
 router.delete('/event/:id', eventValidation.by_id, userController.deleteEvent)
-router.post('/event/apply', userController.applyOnEvent)
+router.post('/event/apply', userController.apply)
 router.put('/event/request/status', eventValidation.changeEventRequestStatus, userController.changeEventRequestStatus)
 router.post('/event/request/attendance', eventValidation.addEventAttendance, userController.addEventAttendance)
 router.delete('/event/request/delete/:id', eventValidation.by_id, userController.deleteRequestEvent)
