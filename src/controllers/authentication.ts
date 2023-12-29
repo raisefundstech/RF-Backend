@@ -110,8 +110,19 @@ export const otpVerification = async (req: Request, res: Response) => {
             // }
 
             // $addToSet: { device_token: device_token } } will be implemented into the notifications feature
-            let response = await userModel.findOneAndUpdate({ otp: body.otp, mobileNumber: body.mobileNumber, isActive: true }, { otp: null, otpExpireTime: null}, { new: true })
-
+            let response = await userModel.findOneAndUpdate(
+                { otp: body.otp, mobileNumber: body.mobileNumber, isActive: true },
+                {
+                  $set: {
+                    otp: null,
+                    otpExpireTime: null,
+                  },
+                  $addToSet: {
+                    device_token: body.device_token,
+                  },
+                },
+                { new: true }
+            );
             const token = jwt.sign({
                 _id: response._id,
                 workSpaceId: response?.workSpaceId,
@@ -128,6 +139,7 @@ export const otpVerification = async (req: Request, res: Response) => {
             await new userSessionModel({
                 createdBy: response._id,
                 token: token,
+                device_token: body?.device_token,
                 refresh_token
             }).save();
 
