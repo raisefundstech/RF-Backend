@@ -1,71 +1,80 @@
-import gcm from 'node-gcm';
-import config from "config";
+import { Expo } from 'expo-server-sdk';
+import { logger } from './winston_logger';
+import { userModel } from '../database';
 
-const fcmKey: any = config.get("fcmKey");
+export const sendNotification = async (expoPushTokens: String[], users: Object, data: Object) => {
 
-const sender = new gcm.Sender(fcmKey);
+    const expo = new Expo();
+    let messages: any = [];
 
-export const notification_to_user = async (sender_user_data: any, data: any, notification: any) => {
-    return new Promise(async (resolve, reject) => {
-        try {
-            if (sender_user_data && data && notification && sender_user_data?.device_token?.length != 0 && sender_user_data != undefined && sender_user_data != null) {
-                let message = new gcm.Message({
-                    data: data,
-                    notification: notification
-                });
-                sender.send(message, {
-                    registrationTokens: sender_user_data?.device_token
-                }, function (err, response) {
-                    if (err) {
-                        console.log('Error ', err);
-                        reject(err)
-                    } else {
-                        resolve(response)
-                    }
-                })
-            }
-            else {
-                resolve(true)
-            }
-        } catch (error) {
-            reject(error)
+    for(let pushToken of expoPushTokens) {
+        if (!Expo.isExpoPushToken(pushToken)) {
+            logger.error(`Push token ${pushToken} is not a valid Expo push token`);
+            continue;
         }
-    })
+        messages.push({
+            to: pushToken,
+            sound: 'default',
+            title: data['title'],
+            body: data['message'],
+            data: data['data']
+        })
+    }
+
+    // The Expo push notification service accepts batches of notifications so
+    // that the server dosen't need to send 1000 requests to send 1000 notifications.
+    // Recommendation is to batch the notifications to reduce the number of requests
+    // and to compress them (notifications with similar content will get compressed.
+    let chunks = expo.chunkPushNotifications(messages);
+    let tickets = [];
+    (async () => {
+    // Send the chunks to the Expo push notification service. There are
+    // different strategies you could use. A simple one is to send one chunk at a
+    // time, which nicely spreads the load out over time:
+    for (let chunk of chunks) {
+        try{
+            let ticketChunk = await expo.sendPushNotificationsAsync(chunk);
+            logger.info(ticketChunk);
+            tickets.push(...ticketChunk);
+            // NOTE: If a ticket contains an error code in ticket.details.error,
+            // handle it appropriately. The error codes are listed in the Expo
+            // documentation:
+            // https://docs.expo.io/push-notifications/sending-notifications/#individual-errors
+        } catch (error) {
+            logger.error(error);
+        }
+    }})();
+
+    for (const ticket of tickets) {
+
+        if (ticket.status === "error") {
+            if (ticket.details && ticket.details.error === "DeviceNotRegistered") {
+                let message = ticket.message;
+                let match = message.match(/"ExponentPushToken\[(.*?)\]"/);
+                let token = match ? match[0] : null;
+                // Delete expo token since the device is not registered anymore
+                await userModel.findOneAndUpdate({_id: users['token'],device_token: token}, { $pull: { device_token: token } })
+                logger.error(`Push notification status: ${ticket.status} failed with following error message: ${message}`)
+            }
+        }
+
+        if (ticket.status === "ok") {
+            logger.info(`Push notification ticket ${ticket.id} status: ${ticket.status}`)
+        }     
+    }
+} 
+
+export const fetchUserTokens = async (volunteerId: string) => {
+    var tokens: any = [];
+    tokens = await userModel.findOne({_id: volunteerId}, {device_token: 1});
+    return tokens?.device;
 }
 
-export const notification_to_multiple_user = async (multiple_user_data: any, data: any, notification: any) => {
-    return new Promise(async (resolve, reject) => {
-        try {
-            if (multiple_user_data && data && notification) {
-                let device_token: any = []
-                for (let i = 0; i < multiple_user_data?.length; i++) {
-                    device_token.push(...multiple_user_data[i]?.device_token)
-                }
-                if (device_token.length != 0) {
-                    let message = new gcm.Message({
-                        data: data,
-                        notification: notification
-                    });
-                    sender.send(message, {
-                        registrationTokens: device_token
-                    }, function (err, response) {
-                        if (err) {
-                            console.log('Error ', err);
-                            reject(err)
-                        } else {
-                            resolve(response)
-                        }
-                    })
-                }
-                else {
-                    resolve(true)
-                }
-            }
-            else {
-                resolve(true)
-            }
-        } catch (error) {
-            reject(error)
-        }
-    })
+export const mapTokensToUser = async (volunteerId: string, tokens: string[]) => {
+    var users: any = {};
+    for (const token of tokens) {
+        const key = token.toString(); // Convert token to string if necessary
+        users[key] = volunteerId.toString();
+    }
+    return users;
 }

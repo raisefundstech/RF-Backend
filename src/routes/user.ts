@@ -4,7 +4,6 @@ import { userJWT } from '../helpers/jwt'
 import { eventValidation, ourTeamValidation, userValidation, workSpaceValidation } from '../validation'
 const router = express.Router()
 
-router.get('/unverified/volunteers', userValidation.checkWorkSpaceId, userController.getUnverifiedVolunteers)
 router.post('/signUp', userValidation?.userSignUp, authenticationController?.userSignUp)
 router.post('/login', userValidation?.userSignIn, authenticationController?.userSignIn)
 router.post('/otpVerification', userValidation?.otpVerification, authenticationController?.otpVerification)
@@ -45,19 +44,23 @@ router.post('/event/add', eventValidation.createEvent, userController.createEven
 router.get('/event/:id', eventValidation.by_id, userController.getEventById)
 router.put('/event/update', eventValidation.updateEvent, userController.updateEvent)
 router.delete('/event/:id', eventValidation.by_id, userController.deleteEvent)
+// update validation for apply withdraw and attendance 
 router.post('/event/apply', userController.apply)
+router.post('/event/withdraw', userController.withdraw)
 router.put('/event/request/status', eventValidation.changeEventRequestStatus, userController.changeEventRequestStatus)
 router.post('/event/request/attendance', eventValidation.addEventAttendance, userController.addEventAttendance)
 router.delete('/event/request/delete/:id', eventValidation.by_id, userController.deleteRequestEvent)
 router.post('/event/timeOfRequest/get', userController.getAllOpenMyEventList)
 router.post('/event/volunteers/get', userController.getVolunteerByEvent)
 router.put('/event/volunteers/add', userController.addVolunteerToEvent)
+router.patch('/event/volunteers/change', userController.updateVolunteers)
 
 //  -------  Volunteers  -------
 router.get('/volunteers', userController.getVolunteers)
 router.get('/volunteer/:id',userValidation.by_id, userController.getVolunteer)
 router.put('/volunteer/position', userValidation.volunteerUpdate, userController.updateVolunteerPosition)
 router.post('/volunteer/add', userValidation.userSignUp, userController.addVolunteer)
+router.get('/unverified/volunteers', userValidation.checkWorkSpaceId, userController.getUnverifiedVolunteers)
 
 //  -------  Attendance  --------
 router.get('/events/attendance/get', userController.getAttendanceBeforeEvents)
