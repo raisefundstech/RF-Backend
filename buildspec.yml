@@ -9,11 +9,14 @@ phases:
       - npm install
   build:
     commands:
-      - tsc
-
+      - echo Build started on `date`
+      - npm run build
+      - npm prune --production
+  post_build:
+    commands:
+      - echo Build completed on `date`
 artifacts:
   files:
     - package.json
     - package-lock.json
-    - 'build/**/*'
   discard-paths: yes
