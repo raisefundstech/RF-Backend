@@ -1,7 +1,6 @@
 import config from 'config'
 import mongoose, { ConnectOptions } from 'mongoose'
 import express from 'express'
-import autoIncrement from 'mongoose-auto-increment'
 const mongooseConnection = express()
 const dbUrl: any = config.get('db_url_dev')
 
@@ -24,6 +23,5 @@ mongoose.connect(
         // useFindAndModify: false,
     } as ConnectOptions
 ).then(data => console.log('Database successfully connected')).catch(err => console.log(err))
-autoIncrement.initialize(connection)
 
-export { mongooseConnection, autoIncrement }
+export { mongooseConnection }

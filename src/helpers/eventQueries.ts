@@ -1,3 +1,5 @@
+import { eventModel,userModel } from "../database";
+import { logger } from "./winston_logger";
 
 const ObjectId = require('mongoose').Types.ObjectId
 
@@ -29,8 +31,10 @@ async function volunteerInfoByEvent (req: any, user: any): Promise<any> {
             endTime: 1,
             volunteerSize: 1,
             notes: 1,
-            isGroupCreated: 1,
+            rfCoins: 1,
             createdBy: 1,
+            updatedBy: 1,
+            isActive: 1,
             volunteerRequest: {
                 $map: {
                 input: "$volunteerRequest",
@@ -111,4 +115,198 @@ async function volunteerInfoByEvent (req: any, user: any): Promise<any> {
     return events;
 }
 
-export { volunteerInfoByEvent };
+async function applyOnEvent(req: any, userId: string): Promise<any> {
+    try {
+        let response: any, body = req.body; 
+        // Check if volunteer has already applied
+        const existingApplication = await eventModel.findOne({
+            _id: ObjectId(body.id),
+            isActive: true,
+            volunteerRequest: {
+                $elemMatch: { volunteerId: ObjectId(userId) }
+            }
+        });
+
+        if (existingApplication) {
+            throw new Error("Volunteer has already applied to this event.");
+        }
+
+        response = await eventModel.findOneAndUpdate({
+            _id: ObjectId(body.id),
+            isActive: true,
+        }, {
+            $push: {
+                volunteerRequest: {
+                    volunteerId: ObjectId(userId),
+                    requestStatus: "PENDING",
+                    appliedAt: new Date()
+                }
+            }
+        }, { new: true });
+        return response;
+    } catch (error) {     
+        throw error;
+    }
+}
+
+async function withdrawFromEvent(req: any): Promise<any> {
+    try {
+        let user: any = req.header('user'), response: any
+        response = await eventModel.findOneAndUpdate({
+            _id: ObjectId(req?.params?.id),
+            isActive: true,
+            volunteerRequest: {
+                $elemMatch: { volunteerId: ObjectId(user._id) }
+            }
+        }, {
+            $pull: {
+                volunteerRequest: {
+                    volunteerId: ObjectId(user._id)
+                }
+            }
+        });
+        if (!response) {
+            throw new Error("Volunteer request not found.");
+        }
+        return response;
+    } catch (error) {     
+        throw error;
+    }
+}
+
+async function updateVolunteersRequestStatus(req: any, volunteerId: string, status: string, userNote: string): Promise<any> {
+    try {
+        const { body } = req;
+        let user: any = req.header('user')
+        const response = await eventModel.findOneAndUpdate(
+            {
+                _id: ObjectId(body.id),
+                isActive: true,
+                "volunteerRequest.volunteerId": ObjectId(volunteerId),
+            },
+            {
+                $set: {
+                    "volunteerRequest.$.requestStatus": status
+                },
+                $push: {
+                    "volunteerRequest.$.userNote": userNote
+                }
+            },
+            { new: true }
+        );
+
+        if (!response) {
+            logger.error("update volunteer request failed.");
+            throw new Error("Document not found or criteria did not match.");
+        }
+        logger.info("Volunteer request successfully updated");
+        return response;
+    } catch (error) {
+        logger.error("Error updating volunteer request:", error.message);
+        return { error: `Invalid volunteerId ${volunteerId}, please correct the VolunteerId and try again`};
+    }
+}
+
+async function updateVolunteersCheckInStatus(eventId: string, volunteerId: string): Promise<any> {
+    try {
+        const response = await eventModel.findOneAndUpdate(
+            {
+                _id: ObjectId(eventId),
+                isActive: true,
+                "volunteerRequest.volunteerId": ObjectId(volunteerId),
+            },
+            {
+                $set: {
+                    "volunteerRequest.$.checkedIn": true,
+                },
+            },
+            { new: true }
+        );
+        // logger.info(response)
+        if (!response || response === null) {
+            logger.error("update volunteer checkIn request failed.");
+            throw new Error("update volunteer checkIn request failed.");
+        }
+        logger.info("Volunteer checkIn request updatedsuccessfully :", volunteerId);
+        return response;
+    } catch (error) {
+        logger.error(`Invalid volunteerId ${volunteerId}, please correct the volunteerId and try again`);
+        return { error: `Invalid volunteerId ${volunteerId}, please correct the VolunteerId and try again`};
+    }
+}
+
+async function updateVolunteersCheckOutStatus(eventId: string, volunteerId: string): Promise<any> {
+    try {
+        const response = await eventModel.findOneAndUpdate(
+            {
+                _id: ObjectId(eventId),
+                isActive: true,
+                "volunteerRequest.volunteerId": ObjectId(volunteerId),
+            },
+            {
+                $set: {
+                    "volunteerRequest.$.checkedOut": true,
+                    "volunteerRequest.$.attendance": true,
+                },
+            },
+            { new: true }
+        );
+        if (!response) {
+            // logger.error("Document not found or criteria did not match.");
+            throw new Error("Document not found or criteria did not match.");
+        }
+        logger.info("Volunteer checkout request updated successfully :", volunteerId,"\t",response?.volunteerRequest?.requestStatus);
+        return response;
+    } catch (error) {
+        logger.error(`Invalid volunteerId ${volunteerId}, please correct the volunteerId and try again`);
+        return { error: `Invalid volunteerId ${volunteerId}, please correct the VolunteerId and try again`};
+    }
+}
+
+async function fetchAdminsAndSuperVolunteers(workspaceId: string): Promise<any> {
+    try {
+        let response: any;
+        response = await userModel.find({
+            isActive: true,
+            userType: { $in: [1, 2] },
+            workSpaceId: ObjectId(workspaceId)
+        }, {
+            firstName: 1,
+            lastName: 1,
+            device_token: 1
+        });
+        return response;
+    } catch (error) {     
+        throw error;
+    }
+}
+
+async function getEventInfo(eventId: string): Promise<any> {
+    try {
+        let response: any;
+        response = await eventModel.findOne({
+            _id: ObjectId(eventId),
+            isActive: true
+        }, {
+            name: 1,
+            date: 1,
+            startTime: 1,
+            endTime: 1,
+            workSpaceId: 1
+        });
+        return response;
+    } catch (error) {     
+        throw error;
+    }
+}
+
+export {
+    volunteerInfoByEvent,
+    applyOnEvent,
+    withdrawFromEvent,
+    updateVolunteersRequestStatus,
+    fetchAdminsAndSuperVolunteers,
+    getEventInfo,
+    updateVolunteersCheckInStatus,
+    updateVolunteersCheckOutStatus
+};
