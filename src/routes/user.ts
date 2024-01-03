@@ -4,7 +4,6 @@ import { userJWT } from '../helpers/jwt'
 import { eventValidation, ourTeamValidation, userValidation, workSpaceValidation } from '../validation'
 const router = express.Router()
 
-router.get('/unverified/volunteers', userValidation.checkWorkSpaceId, userController.getUnverifiedVolunteers)
 router.post('/signUp', userValidation?.userSignUp, authenticationController?.userSignUp)
 router.post('/login', userValidation?.userSignIn, authenticationController?.userSignIn)
 router.post('/otpVerification', userValidation?.otpVerification, authenticationController?.otpVerification)
@@ -38,38 +37,34 @@ router.get('/workSpace/volunteer/:id', workSpaceValidation.by_id, userController
 router.get('/workSpaces/manager', userController.getWorkSpaceByManager)
 
 //  ------  Event Routes  ------
-router.get('/events', userController.getEvents)
+router.get('/events/:id', eventValidation.by_workspace_id,userController.getEvents)
 router.post('/event/get', userController.get_event_pagination)
 router.post('/event/volunteer/page', userController.get_event_pagination_for_volunteers)
 router.post('/event/add', eventValidation.createEvent, userController.createEvent)
-router.get('/event/:id', eventValidation.by_id, userController.getEventById)
+router.get('/event/:id', eventValidation.by_event_id, userController.getEventById)
 router.put('/event/update', eventValidation.updateEvent, userController.updateEvent)
-router.delete('/event/:id', eventValidation.by_id, userController.deleteEvent)
-router.post('/event/apply', userController.applyOnEvent)
-router.put('/event/request/status', eventValidation.changeEventRequestStatus, userController.changeEventRequestStatus)
-router.post('/event/request/attendance', eventValidation.addEventAttendance, userController.addEventAttendance)
-router.delete('/event/request/delete/:id', eventValidation.by_id, userController.deleteRequestEvent)
-router.post('/event/timeOfRequest/get', userController.getAllOpenMyEventList)
+router.delete('/event/:id', eventValidation.by_event_id, userController.deleteEvent)
+router.post('/event/apply', eventValidation.applyToEvent, userController.apply)
+router.delete('/event/withdraw/:id',eventValidation.by_event_id, userController.withdraw)
 router.post('/event/volunteers/get', userController.getVolunteerByEvent)
 router.put('/event/volunteers/add', userController.addVolunteerToEvent)
+router.patch('/event/volunteers/request', eventValidation.updateEvent, userController.updateVolunteers)
 
 //  -------  Volunteers  -------
-router.get('/volunteers', userController.getVolunteers)
+router.get('/volunteers', userValidation.checkWorkSpaceId, userController.getVolunteers)
 router.get('/volunteer/:id',userValidation.by_id, userController.getVolunteer)
 router.put('/volunteer/position', userValidation.volunteerUpdate, userController.updateVolunteerPosition)
 router.post('/volunteer/add', userValidation.userSignUp, userController.addVolunteer)
+router.get('/unverified/volunteers', userValidation.checkWorkSpaceId, userController.getUnverifiedVolunteers)
 
 //  -------  Attendance  --------
-router.get('/events/attendance/get', userController.getAttendanceBeforeEvents)
-router.get('/events/attendance/volunteer/:id', eventValidation.by_id, userController.getVolunteerByEventAttendance)
+router.patch('/attendance/checkin', eventValidation.updateEvent, userController.volunteerCheckIn)
+router.patch('/attendance/checkout', eventValidation.updateEvent, userController.volunteerCheckOut)
 
 //  -------  Meet Our Team  --------
 router.get('/meetOurTeams', userController.getOurTeam)
 router.post('/meetOurTeam/add', ourTeamValidation.createOurTeam, userController.createOurTeam)
 router.put('/meetOurTeam/update', ourTeamValidation.updateOurTeam, userController.updateOurTeam)
-
-//  ------ Room Routes -------
-router.get('/room/get/:id', eventValidation.by_id, userController.get_room_v1)
 
 // -------  Message Routes -------
 router.get('/message', userController.get_message)

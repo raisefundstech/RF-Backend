@@ -96,12 +96,21 @@ export const getVolunteers = async (req: Request, res: Response) => {
     let queryname: any = req.headers.name || ''
     let phonenumber : any = req.headers.number || ''
     try {
-        if (user?.workSpaceId) {
-            match.$or = [{ workSpaceId: ObjectId(user?.workSpaceId) }, { workSpaceId: null }]
-        } else {
-            match.workSpaceId = null
+        // admins and super volunteers can view volunteers from all the workspaces where as a volunteer can view volunteers from his/her workspace only
+        let getUserWorkSpace = await userModel.findOne({ _id: ObjectId(user._id), isActive: true },{workSpaceId: 1})
+        let userAuthority = await userModel.findOne({ _id: ObjectId(user._id), isActive: true },{userType: 1})
+        let workSpaceId = getUserWorkSpace?.workSpaceId
+        if (userAuthority.userType == 1 || userAuthority.userType == 2) {
+           workSpaceId = req.body?.workSpaceId
         }
+
         response = await userModel.aggregate([
+            {
+                $match: {
+                    workSpaceId: ObjectId(workSpaceId),
+                    isActive: true,
+                }
+            },
             {
               $project: {
                 name: {
@@ -119,9 +128,9 @@ export const getVolunteers = async (req: Request, res: Response) => {
             {
               $match: {
                 name: {
-                  $regex: queryname, // Your name regex here
+                  $regex: queryname, // "i" makes the regex case-insensitive
                   $options: "i",
-                }, // "i" makes the regex case-insensitive
+                },
               },
             },
             {
@@ -247,7 +256,7 @@ export const getUnverifiedVolunteers = async (req: Request, res: Response) => {
     let user: any = req.header('user');
     let workspaceId = req.query.workSpaceId; // Get workspaceId from query string parameter
     try {
-        const response = await userModel.find({ workSpaceId: ObjectId(workspaceId), isActive: true, userStatus: 0 });
+        const response = await userModel.find({ workSpaceId: ObjectId(workspaceId), isActive: true, userStatus: 0 },{ otp: 0, otpExpireTime: 0, device_token: 0, loginType: 0, createdAt: 0, updatedAt: 0 });
         if (response) {
             return res.status(200).json(new apiResponse(200, responseMessage.getDataSuccess('unverified volunteers'), response));
         } else {

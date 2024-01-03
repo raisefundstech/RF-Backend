@@ -9,17 +9,17 @@ export const createEvent = async (req: Request, res: Response, next: any) => {
         workSpaceId: Joi.string().trim().required().error(new Error('workSpaceId is required!')),
         name: Joi.string().trim().required().error(new Error('name is required!')),
         address: Joi.string().trim().required().error(new Error('address is required!')),
-        latitude: Joi.number().allow("", null).error(new Error('latitude is number!')),
-        longitude: Joi.number().allow("", null).error(new Error('longitude is number!')),
+        latitude: Joi.number().allow(null).error(new Error('latitude is number!')),
+        longitude: Joi.number().allow(null).error(new Error('longitude is number!')),
         date: Joi.string().required().error(new Error('date is required!')),
         startTime: Joi.string().required().error(new Error('startTime is required!')),
         endTime: Joi.string().required().error(new Error('endTime is required!')),
         volunteerSize: Joi.number().required().error(new Error('volunteerSize is required!')),
-        notes: Joi.string().allow(null, "").error(new Error('notes is string!'))
+        notes: Joi.string().allow(null, "").error(new Error('notes is string!')),
+        rfCoins: Joi.number().required().error(new Error('rfCoins is number!'))
     });
     schema.validateAsync(req.body).then(result => {
         if (!isValidObjectId(result.workSpaceId)) return res.status(400).json(new apiResponse(400, 'invalid workSpaceId', {}));
-
         req.body = result;
         return next()
     }).catch(error => {
@@ -28,21 +28,8 @@ export const createEvent = async (req: Request, res: Response, next: any) => {
 }
 
 export const updateEvent = async (req: Request, res: Response, next: any) => {
-    
-    const mongoose = require('mongoose');
-
-    const volunteerRequestSchema = new mongoose.Schema({
-        volunteerId: { type: mongoose.Schema.Types.ObjectId },
-        requestStatus: { type: String, default: "PENDING", enum: ["PENDING", "APPROVED", "DECLINED"] },
-        attendance: { type: Boolean, default: false },
-        appliedAt: { type: Date, default: new Date() },
-        checkedIn: { type: Boolean, default: false },
-        checkedOut: { type: Boolean, default: false },
-        userNote: { type: [{ type: String }], default: [] },
-    }, { _id: false });  // Add this line to disable automatic generation of _id for subdocuments
-
     const schema = Joi.object({
-        id: Joi.string().trim().required().error(new Error('id is required!')),
+        id: Joi.string().trim().required().error(new Error('event id is required!')),
         workSpaceId: Joi.string().trim().allow(null, "").error(new Error('workSpaceId is objectId!')),
         name: Joi.string().trim().allow(null, "").error(new Error('name is string!')),
         address: Joi.string().trim().allow(null, "").error(new Error('address is string!')),
@@ -53,7 +40,8 @@ export const updateEvent = async (req: Request, res: Response, next: any) => {
         endTime: Joi.string().trim().allow(null, "").error(new Error('endTime is string!')),
         volunteerSize: Joi.number().allow(null).error(new Error('volunteerSize is number!')),
         notes: Joi.string().trim().allow(null, "").error(new Error('notes is string!')),
-        volunteerRequest: Joi.array().default([]),
+        rfCoins: Joi.number().allow(null,"").error(new Error('rfCoins is number!')),
+        volunteerRequest: Joi.array().allow(null,"").default([]).error(new Error('volunteerRequest is array!')),
     });
     schema.validateAsync(req.body).then(result => {
         if (!isValidObjectId(result.id)) return res.status(400).json(new apiResponse(400, 'invalid id', {}));
@@ -64,10 +52,31 @@ export const updateEvent = async (req: Request, res: Response, next: any) => {
     })
 }
 
-export const by_id = async (req: Request, res: Response, next: any) => {
-    if (!isValidObjectId(req.params.id)) return res.status(400).json(new apiResponse(400, responseMessage.invalidId('id'), {}));
+export const by_workspace_id = async (req: Request, res: Response, next: any) => {
+    if (!isValidObjectId(req.params.id)) return res.status(400).json(new apiResponse(400, responseMessage.invalidId('workSpaceId'), {}));
     next()
 }
+
+export const by_event_id = async (req: Request, res: Response, next: any) => {
+    if (!isValidObjectId(req.params.id)) return res.status(400).json(new apiResponse(400, responseMessage.invalidId('eventId'), {}));
+    next()
+}
+
+export const applyToEvent = async (req: Request, res: Response, next: any) => {
+    const schema = Joi.object({
+        id: Joi.string().trim().required().error(new Error('event id is required!')),
+        workSpaceId: Joi.string().trim().required().error(new Error('workSpaceId is required!'))
+    })
+    schema.validateAsync(req.body).then(result => {
+        if (!isValidObjectId(result.id)) return res.status(400).json(new apiResponse(400, 'invalid id', {}));
+        if (!isValidObjectId(result.workSpaceId)) return res.status(400).json(new apiResponse(400, 'invalid workSpaceId', {}));
+        req.body = result;
+        return next()
+    }).catch(error => {
+        res.status(400).json(new apiResponse(400, error.message, {}))
+    })
+}
+        
 
 export const changeEventRequestStatus = async (req: Request, res: Response, next: any) => {
     const schema = Joi.array().items(

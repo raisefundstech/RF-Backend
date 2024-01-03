@@ -9,6 +9,7 @@ export const userSignUp = async (req: Request, res: Response, next: any) => {
     const schema = Joi.object({
         firstName: Joi.string().trim().required().error(new Error('firstName is required!')),
         lastName: Joi.string().trim().required().error(new Error('lastName is required!')),
+        gender: Joi.number().required().error(new Error('gender is a number 0 for female 1 for male 2 for other')),
         mobileNumber: Joi.string().trim().required().error(new Error('mobileNumber is required!')),
         email: Joi.string().trim().required().error(new Error('email is required!')),
         address: Joi.string().trim().required().error(new Error('address is required!')),
@@ -26,6 +27,8 @@ export const userSignUp = async (req: Request, res: Response, next: any) => {
         collegeIdCard: Joi.string().trim().allow(null, "").error(new Error('collegeIdCard is string!')),
         countryOfOrigin: Joi.string().trim().allow(null, "").error(new Error('countryOfOrigin is string!')),
         isRBSAvailable: Joi.boolean().allow(null).error(new Error('isRBSAvailable is boolean!')),
+        RBSID: Joi.number().allow(null).error(new Error('userType is number!')),
+        rbsImage: Joi.string().trim().allow(null, "").error(new Error('image is string!')),
         city: Joi.string().trim().allow(null, "").error(new Error('city is string!')),
     })
     schema.validateAsync(req.body).then(result => {

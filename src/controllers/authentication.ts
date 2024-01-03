@@ -110,7 +110,19 @@ export const otpVerification = async (req: Request, res: Response) => {
             // }
 
             // $addToSet: { device_token: device_token } } will be implemented into the notifications feature
-            let response = await userModel.findOneAndUpdate({ otp: body.otp, mobileNumber: body.mobileNumber, isActive: true }, { otp: null, otpExpireTime: null}, { new: true })
+            let response = await userModel.findOneAndUpdate(
+                { otp: body.otp, mobileNumber: body.mobileNumber, isActive: true },
+                {
+                  $set: {
+                    otp: null,
+                    otpExpireTime: null,
+                  },
+                  $addToSet: {
+                    device_token: body.device_token,
+                  },
+                },
+                { new: true }
+            );
 
             const token = jwt.sign({
                 _id: response._id,
@@ -278,7 +290,7 @@ export const validate = async (req: Request, res: Response) => {
         if (response.length === 0) {
             return res.status(200).json(new apiResponse(200, 'Mobile Number does not exist', {}));
         } else {
-            return res.status(403).json(new apiResponse(403, 'Mobile Number already exists', {}));
+            return res.status(409).json(new apiResponse(409, 'Mobile Number already exists', {}));
         }
     } catch (error) {
         return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, error));
