@@ -7,7 +7,7 @@
     "sourceMap": true,
     "esModuleInterop": true,
     "resolveJsonModule": true,
-    "outDir": "./build",
+    "outDir": "build",
     "forceConsistentCasingInFileNames": true,
     "emitDecoratorMetadata": true,
     "ignoreDeprecations": "5.0",

@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc --build tsconfig.json",
     "clean": "npx rimraf ./build",
     "start": "node build/server.js",
     "zip": "bestZip project.zip build package.json config .platform package-lock.json",
@@ -41,7 +41,7 @@
     "multer-s3-transform": "^2.3.2",
     "node-gcm": "^1.0.5",
     "nodemailer": "^6.9.4",
-    "sharp": "^0.32.5",
+    "sharp": "^0.32.6",
     "socket.io": "^4.6.1",
     "tsc-watch": "^5.0.3",
     "twilio": "^4.11.0",
