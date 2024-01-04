@@ -37,7 +37,7 @@ router.get('/workSpace/volunteer/:id', workSpaceValidation.by_id, userController
 router.get('/workSpaces/manager', userController.getWorkSpaceByManager)
 
 //  ------  Event Routes  ------
-router.get('/events/:id', eventValidation.by_workspace_id,userController.getEvents)
+router.get('/events', userController.getEvents)
 router.post('/event/get', userController.get_event_pagination)
 router.post('/event/volunteer/page', userController.get_event_pagination_for_volunteers)
 router.post('/event/add', eventValidation.createEvent, userController.createEvent)
