@@ -26,7 +26,7 @@ export const getEvents = async (req: Request, res: Response) => {
     let userWorkSpace = await userModel.findOne({ _id: ObjectId(user._id) }, { workSpaceId: 1 });
     let workSpaceId = userWorkSpace?.workSpaceId;
     if(user.type === 1 || user.type === 2) {
-        workSpaceId = req?.query?.id;
+        workSpaceId = req?.query?.id || workSpaceId;
     }
 
     if(workSpaceId == null) return res.status(400).json(new apiResponse(400, "Please provide a valid workspaceid and try again", {}))
