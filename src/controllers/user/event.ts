@@ -11,6 +11,7 @@ import { eventModel, roomModel, userModel } from '../../database'
 import { getUser } from '../../helpers/userQueries'
 import { pushUserEventRecord } from '../../helpers/statsQueries'
 import { timeDifferences } from '../../helpers/timeDifference'
+import { workSpaceModel } from '../../database/models/workSpace'
 import { sendNotification, fetchUserTokens, mapTokensToUser } from '../../helpers/notification'
 
 const ObjectId = require('mongoose').Types.ObjectId
@@ -24,8 +25,8 @@ export const getEvents = async (req: Request, res: Response) => {
     // Allow Admins and super volunteers to view events across all workspaces and volunteers to view events in their workspace
     let userWorkSpace = await userModel.findOne({ _id: ObjectId(user._id) }, { workSpaceId: 1 });
     let workSpaceId = userWorkSpace?.workSpaceId;
-    if(user.type === 1 || user.type === 2){
-        workSpaceId = req?.params?.workSpaceId;
+    if(user.type === 1 || user.type === 2) {
+        workSpaceId = req?.params?.id;
     }
 
     if(userWorkSpace?.workSpaceId == null) return res.status(400).json(new apiResponse(400, "Please select a valid workspace from your profile and try again.", {}))
@@ -67,7 +68,7 @@ export const getEvents = async (req: Request, res: Response) => {
             }
         ]);
         // console.timeEnd('mongoconntime');
-        if (response) return res.status(200).json(new apiResponse(200, responseMessage.getDataSuccess('events'), response))
+        if (response?.length > 0) return res.status(200).json(new apiResponse(200, responseMessage.getDataSuccess('events'), response))
         else return res.status(404).json(new apiResponse(404, responseMessage.getDataNotFound('events'), {}))
     } catch (error) {
         // console.log(error);
@@ -79,14 +80,24 @@ export const createEvent = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any, body = req.body
     try {
+
         body.createdBy = user?._id;
         let userInfo = await getUser(user?._id, true);
         logger.info(userInfo?.length);
+
         if(userInfo[0]?.userType === 0 || userInfo[0]?.userType === 2 || userInfo[0]?.userType > 2) {
             return res.status(400).json(new apiResponse(400, "You are not authorized to create event.", {}));
         }
+
         if (new Date(body.startTime) < new Date() || new Date(body.endTime) < new Date() || new Date(body.startTime).toString() == new Date(body.endTime).toString()) return res.status(400).json(new apiResponse(400, "Invalid start time or end time!", {}))
         if (body.volunteerSize < 2) return res.status(400).json(new apiResponse(400, "Please add volunteer size more than 1 . ", {}))
+
+        let validWorkSpace = await workSpaceModel.findOne({ _id: ObjectId(body?.workSpaceId), isActive: true });
+
+        if(validWorkSpace == null) {
+            return res.status(400).json(new apiResponse(400, "Invalid workspace id. Please provide valid workspace id.", {}));
+        }
+
         response = await new eventModel(body).save();
         if (response) {
             let userData = await userModel.find({ userType: 0, isActive: true, workSpaceId: response?.workSpaceId }, { firstName: 1, lastName: 1, device_token: 1 });
