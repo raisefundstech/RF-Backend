@@ -16,6 +16,80 @@ import { sendNotification, fetchUserTokens, mapTokensToUser } from '../../helper
 
 const ObjectId = require('mongoose').Types.ObjectId
 
+// Fetch my events based on the user
+export const getMyEvents = async (req: Request, res: Response) => {
+    reqInfo(req)
+    let user: any = req.header('user'), response: any
+    try {
+        console.log(user)
+        response = await eventModel.aggregate([
+          {
+            $match: {
+              volunteerRequest: {
+                $elemMatch: { volunteerId: ObjectId(user._id) },
+              },
+              isActive: true,
+            },
+          },
+          { $sort: { startTime: -1 } },
+          {
+            $project: {
+              workSpaceId: 1,
+              name: 1,
+              address: 1,
+              date: 1,
+              startTime: 1,
+              endTime: 1,
+              volunteerSize: 1,
+              notes: 1,
+              isActive: 1,
+              rfCoins: 1,
+              requestStatus: {
+                $let: {
+                  vars: {
+                    requestStatuses: {
+                      $map: {
+                        input: {
+                          $filter: {
+                            input: "$volunteerRequest",
+                            as: "volunteer",
+                            cond: {
+                              $eq: [
+                                "$$volunteer.volunteerId",
+                                ObjectId(user._id),
+                              ],
+                            },
+                          },
+                        },
+                        as: "volunteer",
+                        in: "$$volunteer.requestStatus",
+                      },
+                    },
+                  },
+                  in: {
+                    $cond: {
+                      if: { $eq: [{ $size: "$$requestStatuses" }, 1] },
+                      then: { $arrayElemAt: ["$$requestStatuses", 0] },
+                      else: "$$requestStatuses",
+                    },
+                  },
+                },
+              },
+            },
+          },
+          {
+            $sort: {
+              createdAt: -1,
+            },
+          },
+        ]);
+        if (response?.length > 0) return res.status(200).json(new apiResponse(200, responseMessage.getDataSuccess('events'), response))
+        else return res.status(404).json(new apiResponse(404, responseMessage.getDataNotFound('events'), {}))
+    } catch (error) {
+        return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, error));
+    }
+}
+
 // Fetch all the events based on the workspace provided 
 export const getEvents = async (req: Request, res: Response) => {
 
