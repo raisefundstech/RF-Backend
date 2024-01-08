@@ -7,7 +7,7 @@
     "build": "tsc --build tsconfig.json",
     "clean": "npx rimraf ./dist",
     "start": "node dist/server.js",
-    "start:dev": "nodemon --watch 'src/**/*.ts' --exec 'ts-node' server.ts",
+    "start:dev": "nodemon",
     "zip": "bestZip project.zip dist package.json config .platform package-lock.json",
     "server": "tsc-watch --outDir ./dist --onSuccess \"npm run start -- --mode=http\" --onFailure \"echo ERROR! Compilation Failed\""
   },
