@@ -121,12 +121,31 @@ export const getEvents = async (req: Request, res: Response) => {
                     notes: 1,
                     isActive: 1,
                     createdBy: 1,
-                    volunteerRequest: {
-                        $filter: {
-                            input: "$volunteerRequest",
-                            as: "volunteer",
-                            cond: {
-                                $eq: ["$$volunteer.volunteerId", ObjectId(user._id)]
+                    requestStatus: {
+                        $let: {
+                            vars: {
+                                requestStatuses: {
+                                    $map: {
+                                        input: {
+                                            $filter: {
+                                                input: "$volunteerRequest",
+                                                as: "volunteer",
+                                                cond: {
+                                                    $eq: ["$$volunteer.volunteerId", ObjectId(user._id)]
+                                                }
+                                            }
+                                        },
+                                        as: "volunteer",
+                                        in: "$$volunteer.requestStatus"
+                                    }
+                                }
+                            },
+                            in: {
+                                $cond: {
+                                    if: { $eq: [{ $size: "$$requestStatuses" }, 1] },
+                                    then: { $arrayElemAt: ["$$requestStatuses", 0] },
+                                    else: "NEW"
+                                }
                             }
                         }
                     },

@@ -5,8 +5,7 @@ import { isValidObjectId } from 'mongoose'
 import { Request, Response } from 'express'
 import { responseMessage } from "../helpers"
 
-export const userSignUp = async (req: Request, res: Response, next: any) => {
-    const schema = Joi.object({
+const userProfileSchema = Joi.object({
         firstName: Joi.string().trim().required().error(new Error('firstName is required!')),
         lastName: Joi.string().trim().required().error(new Error('lastName is required!')),
         gender: Joi.number().required().error(new Error('gender is a number 0 for female 1 for male 2 for other')),
@@ -27,10 +26,14 @@ export const userSignUp = async (req: Request, res: Response, next: any) => {
         collegeIdCard: Joi.string().trim().allow(null, "").error(new Error('collegeIdCard is string!')),
         countryOfOrigin: Joi.string().trim().allow(null, "").error(new Error('countryOfOrigin is string!')),
         isRBSAvailable: Joi.boolean().allow(null).error(new Error('isRBSAvailable is boolean!')),
-        RBSID: Joi.number().allow(null).error(new Error('userType is number!')),
+        RBSId: Joi.number().allow(null).error(new Error('userType is number!')),
         rbsImage: Joi.string().trim().allow(null, "").error(new Error('image is string!')),
         city: Joi.string().trim().allow(null, "").error(new Error('city is string!')),
+        notes: Joi.string().trim().allow(null, "").error(new Error('notes is string!')),
     })
+
+export const userSignUp = async (req: Request, res: Response, next: any) => {
+    const schema = userProfileSchema.keys({});
     schema.validateAsync(req.body).then(result => {
         if (!isValidObjectId(result.workSpaceId)) return res.status(400).json(new apiResponse(400, responseMessage.invalidId('workSpaceId'), {}));
         req.body = result;
@@ -98,14 +101,8 @@ export const verifyOTP = async (req: Request, res: Response, next: any) => {
 };
   
 export const volunteerUpdate = async (req: Request, res: Response, next: any) => {
-    const schema = Joi.object({
+    const schema = userProfileSchema.keys({
         id: Joi.string().trim().required().error(new Error('id is required!')),
-        userType: Joi.number().allow(null).error(new Error('userType is number!')),
-        tags: Joi.string().allow(null, "").error(new Error('tags is string!')),
-        workSpaceId: Joi.string().trim().required().error(new Error('workSpaceId is string!')),
-        userStatus: Joi.number().allow(null).error(new Error('userStatus is number!')),
-        isActive: Joi.boolean().allow(null).error(new Error('isActive is boolean!')),
-        notes: Joi.string().allow(null, "").error(new Error('notes is string!')),
     })
     schema.validateAsync(req.body).then(result => {
         if (!isValidObjectId(result.id)) return res.status(400).json(new apiResponse(400, responseMessage.invalidId('id'), {}));
