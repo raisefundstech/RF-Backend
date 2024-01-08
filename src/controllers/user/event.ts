@@ -237,7 +237,7 @@ export const updateEvent = async (req: Request, res: Response) => {
         if(userAuthority?.userType === 0 || userAuthority?.userType == 2 || userAuthority?.userType > 2){
             throw new Error("You are not authorized to update event.");
         }
-        response = await eventModel.findOneAndUpdate({ _id: ObjectId(body.id), isActive: true }, body, { new: true });
+        response = await eventModel.findOneAndUpdate({ _id: ObjectId(body._id), isActive: true }, body, { new: true });
         if (response) {
             let updateRoomName = await roomModel.findOneAndUpdate({ eventId: ObjectId(response?._id), isActive: true }, { roomName: response?.name + " " + "group" })
             return res.status(200).json(new apiResponse(200, responseMessage.updateDataSuccess('event'), {}))
