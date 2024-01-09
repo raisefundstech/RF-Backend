@@ -263,7 +263,7 @@ export const getEventById = async (req: Request, res: Response) => {
         response = await eventModel.aggregate(pipeline);
         // If the userStatus represent the user is a volunteer delete the volunteerRequest from the response
         if(userStatus?.userType === 0){
-            delete response[0]?.volunteerRequest;
+            response[0].volunteerRequest = response[0]?.volunteerRequest.filter((data: any) => data?.volunteerId?.toString() === user?._id?.toString());
         }
         if (response) return res.status(200).json(new apiResponse(200, responseMessage.getDataSuccess('event'), response[0]))
         else return res.status(400).json(new apiResponse(400, responseMessage.getDataNotFound('event'), {}))

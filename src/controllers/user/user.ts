@@ -107,7 +107,7 @@ export const getVolunteers = async (req: Request, res: Response) => {
         let userAuthority = await userModel.findOne({ _id: ObjectId(user._id), isActive: true },{userType: 1})
         let workSpaceId = getUserWorkSpace?.workSpaceId
         if (userAuthority.userType == 1 || userAuthority.userType == 2) {
-           workSpaceId = req.body?.workSpaceId
+           workSpaceId = req.query?.workSpaceId;
         }
 
         response = await userModel.aggregate([
