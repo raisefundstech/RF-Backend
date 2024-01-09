@@ -102,10 +102,10 @@ export const verifyOTP = async (req: Request, res: Response, next: any) => {
   
 export const volunteerUpdate = async (req: Request, res: Response, next: any) => {
     const schema = userProfileSchema.keys({
-        id: Joi.string().trim().required().error(new Error('id is required!')),
+        _id: Joi.string().trim().required().error(new Error('_id is required!')),
     })
     schema.validateAsync(req.body).then(result => {
-        if (!isValidObjectId(result.id)) return res.status(400).json(new apiResponse(400, responseMessage.invalidId('id'), {}));
+        if (!isValidObjectId(result._id)) return res.status(400).json(new apiResponse(400, responseMessage.invalidId('_id'), {}));
         req.body = result
         return next()
     }).catch(error => {

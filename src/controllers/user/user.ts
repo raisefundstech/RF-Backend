@@ -101,7 +101,7 @@ export const getVolunteers = async (req: Request, res: Response) => {
         let userAuthority = await userModel.findOne({ _id: ObjectId(user._id), isActive: true },{userType: 1})
         let workSpaceId = getUserWorkSpace?.workSpaceId
         if (userAuthority.userType == 1 || userAuthority.userType == 2) {
-           workSpaceId = req.body?.workSpaceId
+           workSpaceId = req.query?.workSpaceId;
         }
 
         response = await userModel.aggregate([
@@ -190,8 +190,8 @@ export const updateVolunteerPosition = async (req: Request, res: Response) => {
     let body = req.body, response, user: any = req.header('user');
     let userAuthority = await userModel.findOne({ _id: ObjectId(user._id), isActive: true })
     try {
-        if (userAuthority.userStatus == 1) {
-            response = await userModel.findOneAndUpdate({ _id: ObjectId(body.id), isActive: true }, body, { new: true })
+        if (userAuthority.userType == 1) {
+            response = await userModel.findOneAndUpdate({ _id: ObjectId(body._id), isActive: true }, body, { new: true })
         }
         if (response) {
             return res.status(200).json(new apiResponse(200, 'Volunteer information updated successfully!', {}))
