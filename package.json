@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc --build tsconfig.json",
     "clean": "npx rimraf ./dist",
-    "start": "node dist/server.js",
+    "start": "node dist/src/index.js",
     "start:dev": "nodemon",
     "zip": "bestZip project.zip dist package.json config .platform package-lock.json",
     "server": "tsc-watch --outDir ./dist --onSuccess \"npm run start -- --mode=http\" --onFailure \"echo ERROR! Compilation Failed\""
@@ -35,7 +35,6 @@
     "joi": "^17.7.0",
     "jsonwebtoken": "^9.0.0",
     "moment": "^2.29.4",
-    "moment-timezone": "^0.5.39",
     "mongoose": "^6.9.1",
     "multer": "^1.4.5-lts.1",
     "multer-s3": "^3.0.1",

@@ -7,7 +7,7 @@ async function volunteerInfoByEvent (req: any, user: any): Promise<any> {
     const events = [
         {
             $match: {
-            _id: ObjectId(req.params.id),
+            _id: ObjectId(req?.params?.id),
             isActive: true
             }
         },
@@ -120,7 +120,7 @@ async function applyOnEvent(req: any, userId: string): Promise<any> {
         let response: any, body = req.body; 
         // Check if volunteer has already applied
         const existingApplication = await eventModel.findOne({
-            _id: ObjectId(body.id),
+            _id: ObjectId(body._id),
             isActive: true,
             volunteerRequest: {
                 $elemMatch: { volunteerId: ObjectId(userId) }
@@ -132,7 +132,7 @@ async function applyOnEvent(req: any, userId: string): Promise<any> {
         }
 
         response = await eventModel.findOneAndUpdate({
-            _id: ObjectId(body.id),
+            _id: ObjectId(body._id),
             isActive: true,
         }, {
             $push: {
@@ -148,6 +148,31 @@ async function applyOnEvent(req: any, userId: string): Promise<any> {
         throw error;
     }
 }
+
+async function checkEventCreationTime(req: any): Promise<any> {
+    const { date, startTime, endTime }: { date: any; startTime: any; endTime: any } = req.body;
+
+    if (date == null || startTime == null || endTime == null) {
+        throw new Error("Event date and Start/End Time cannot be null.");
+    }
+
+    const eventDate = new Date(date);
+    const currentDate = new Date();
+    const eventStartTime = new Date(startTime);
+    const eventEndTime = new Date(endTime);
+
+    // Date comparisons
+    if (eventDate > eventStartTime || eventDate > eventEndTime || eventDate < currentDate ||
+        eventStartTime < currentDate || eventEndTime < currentDate || eventStartTime > eventEndTime) {
+        throw new Error("Invalid date/time combinations.");
+    }
+
+    // Duration check
+    if (startTime - endTime < 3 * 3600000) {
+        throw new Error("Event duration cannot be less than 3 hours.");
+    }
+}
+
 
 async function withdrawFromEvent(req: any): Promise<any> {
     try {
@@ -180,7 +205,7 @@ async function updateVolunteersRequestStatus(req: any, volunteerId: string, stat
         let user: any = req.header('user')
         const response = await eventModel.findOneAndUpdate(
             {
-                _id: ObjectId(body.id),
+                _id: ObjectId(body._id),
                 isActive: true,
                 "volunteerRequest.volunteerId": ObjectId(volunteerId),
             },
@@ -308,5 +333,6 @@ export {
     fetchAdminsAndSuperVolunteers,
     getEventInfo,
     updateVolunteersCheckInStatus,
-    updateVolunteersCheckOutStatus
+    updateVolunteersCheckOutStatus,
+    checkEventCreationTime
 };

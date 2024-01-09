@@ -29,7 +29,7 @@ export const createEvent = async (req: Request, res: Response, next: any) => {
 
 export const updateEvent = async (req: Request, res: Response, next: any) => {
     const schema = Joi.object({
-        id: Joi.string().trim().required().error(new Error('event id is required!')),
+        _id: Joi.string().trim().required().error(new Error('event id is required!')),
         workSpaceId: Joi.string().trim().allow(null, "").error(new Error('workSpaceId is objectId!')),
         name: Joi.string().trim().allow(null, "").error(new Error('name is string!')),
         address: Joi.string().trim().allow(null, "").error(new Error('address is string!')),
@@ -44,17 +44,12 @@ export const updateEvent = async (req: Request, res: Response, next: any) => {
         volunteerRequest: Joi.array().allow(null,"").default([]).error(new Error('volunteerRequest is array!')),
     });
     schema.validateAsync(req.body).then(result => {
-        if (!isValidObjectId(result.id)) return res.status(400).json(new apiResponse(400, 'invalid id', {}));
+        if (!isValidObjectId(result._id)) return res.status(400).json(new apiResponse(400, 'invalid id', {}));
         req.body = result;
         return next()
     }).catch(error => {
         res.status(400).json(new apiResponse(400, error.message, {}))
     })
-}
-
-export const by_workspace_id = async (req: Request, res: Response, next: any) => {
-    if (!isValidObjectId(req.params.id)) return res.status(400).json(new apiResponse(400, responseMessage.invalidId('workSpaceId'), {}));
-    next()
 }
 
 export const by_event_id = async (req: Request, res: Response, next: any) => {
@@ -68,7 +63,7 @@ export const applyToEvent = async (req: Request, res: Response, next: any) => {
         workSpaceId: Joi.string().trim().required().error(new Error('workSpaceId is required!'))
     })
     schema.validateAsync(req.body).then(result => {
-        if (!isValidObjectId(result.id)) return res.status(400).json(new apiResponse(400, 'invalid id', {}));
+        if (!isValidObjectId(result._id)) return res.status(400).json(new apiResponse(400, 'invalid id', {}));
         if (!isValidObjectId(result.workSpaceId)) return res.status(400).json(new apiResponse(400, 'invalid workSpaceId', {}));
         req.body = result;
         return next()
@@ -81,7 +76,7 @@ export const applyToEvent = async (req: Request, res: Response, next: any) => {
 export const changeEventRequestStatus = async (req: Request, res: Response, next: any) => {
     const schema = Joi.array().items(
         Joi.object({
-            id: Joi.string().trim().required().error(new Error('id is required!')),
+            _id: Joi.string().trim().required().error(new Error('id is required!')),
             requestId: Joi.string().trim().required().error(new Error('requestId is required!')),
             requestStatus: Joi.string().trim().required().error(new Error('requestStatus is string!'))
         })
@@ -90,7 +85,7 @@ export const changeEventRequestStatus = async (req: Request, res: Response, next
         const arrayData = Array.isArray(result) ? result : [result];
 
         for (const item of arrayData) {
-            if (!isValidObjectId(item.id)) return res.status(400).json(new apiResponse(400, 'invalid id', {}));
+            if (!isValidObjectId(item._id)) return res.status(400).json(new apiResponse(400, 'invalid id', {}));
             if (!isValidObjectId(item.requestId)) return res.status(400).json(new apiResponse(400, 'invalid requestId', {}));
         }
         req.body = arrayData;
@@ -103,7 +98,7 @@ export const changeEventRequestStatus = async (req: Request, res: Response, next
 export const addEventAttendance = async (req: Request, res: Response, next: any) => {
     const schema = Joi.array().items(
         Joi.object({
-            id: Joi.string().trim().required().error(new Error('id is required!')),
+            _id: Joi.string().trim().required().error(new Error('id is required!')),
             requestId: Joi.string().trim().required().error(new Error('requestId is required!')),
             attendance: Joi.boolean().required().error(new Error('attendance is boolean!'))
         })
@@ -113,9 +108,8 @@ export const addEventAttendance = async (req: Request, res: Response, next: any)
         const arrayData = Array.isArray(result) ? result : [result];
 
         for (const item of arrayData) {
-            if (!isValidObjectId(item.id)) return res.status(400).json(new apiResponse(400, 'invalid id', {}));
+            if (!isValidObjectId(item._id)) return res.status(400).json(new apiResponse(400, 'invalid id', {}));
             if (!isValidObjectId(item.requestId)) return res.status(400).json(new apiResponse(400, 'invalid requestId', {}));
-
         }
         req.body = arrayData;
         return next()

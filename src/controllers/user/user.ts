@@ -191,7 +191,7 @@ export const updateVolunteerPosition = async (req: Request, res: Response) => {
     let userAuthority = await userModel.findOne({ _id: ObjectId(user._id), isActive: true })
     try {
         if (userAuthority.userStatus == 1) {
-            response = await userModel.findOneAndUpdate({ _id: ObjectId(body.id), isActive: true }, body, { new: true })
+            response = await userModel.findOneAndUpdate({ _id: ObjectId(body._id), isActive: true }, body, { new: true })
         }
         if (response) {
             return res.status(200).json(new apiResponse(200, 'Volunteer information updated successfully!', {}))
