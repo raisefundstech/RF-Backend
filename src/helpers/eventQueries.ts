@@ -117,10 +117,36 @@ async function volunteerInfoByEvent (req: any, user: any): Promise<any> {
 
 async function applyOnEvent(req: any, userId: string): Promise<any> {
     try {
-        let response: any, body = req.body; 
+        let response: any = {}, body = req.body; 
+
+        const getEventData = await eventModel.findOne({_id: ObjectId(body._id), isActive: true},{date:1,startTime:1,endTime:1});
+
+        const eventsAppliedOnSameDay = await eventModel.aggregate([
+            {
+              $match: {
+                _id: { $ne: ObjectId(body?._id) }, // Exclude the current event
+                isActive: true,
+                date: {
+                  $eq: new Date(getEventData?.date)
+                },
+                volunteerRequest: {
+                    $elemMatch: { volunteerId: ObjectId(userId) }
+                }
+              }
+            }
+        ]);
+
+
+        if(eventsAppliedOnSameDay.length > 0) {
+            response['error'] = `Volunteer has already applied to another event ${eventsAppliedOnSameDay?.[0]?.name} on the same day.`;
+            return response
+        }
+
+        // logger.info(eventsAppliedOnSameDay);
+
         // Check if volunteer has already applied
         const existingApplication = await eventModel.findOne({
-            _id: ObjectId(body._id),
+            _id: ObjectId(body?._id),
             isActive: true,
             volunteerRequest: {
                 $elemMatch: { volunteerId: ObjectId(userId) }
@@ -128,7 +154,8 @@ async function applyOnEvent(req: any, userId: string): Promise<any> {
         });
 
         if (existingApplication) {
-            throw new Error("Volunteer has already applied to this event.");
+            response['error'] = "Volunteer has already applied to this event.";
+            return response;
         }
 
         response = await eventModel.findOneAndUpdate({

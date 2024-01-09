@@ -40,8 +40,9 @@ export const getProfile = async (req: Request, res: Response) => {
                     otp: 0,
                     otpExpireTime: 0,
                     device_token: 0,
-                    createdAt: 0,
-                    updatedAt: 0
+                    __v: 0,
+                    latitude:0, 
+                    longitude:0, 
                 }
             }
         ])
@@ -57,7 +58,12 @@ export const updateProfile = async (req: Request, res: Response) => {
     let body = req.body, user: any = req.header('user')
     body.updatedBy = user._id
     try {
-        let response = await userModel.findOneAndUpdate({ _id: ObjectId((req.header('user') as any)?._id), isActive: true }, body, { new: true })
+        let response = await userModel.findOneAndUpdate(
+            { _id: ObjectId((req.header('user') as any)?._id), isActive: true },
+            body,
+            { new: true, projection: { otp: 0, otpExpireTime: 0, __v:0, latitude:0, longitude:0, device_token:0 } }
+        )
+        
         if (response) {
             // if (body?.image != response?.image && response.image != null && body?.image != null && body?.image != undefined) {
             //     let [folder_name, image_name] = await URL_decode(response?.image)
@@ -190,7 +196,7 @@ export const updateVolunteerPosition = async (req: Request, res: Response) => {
     let body = req.body, response, user: any = req.header('user');
     let userAuthority = await userModel.findOne({ _id: ObjectId(user._id), isActive: true })
     try {
-        if (userAuthority.userStatus == 1) {
+        if (userAuthority.userType == 1) {
             response = await userModel.findOneAndUpdate({ _id: ObjectId(body._id), isActive: true }, body, { new: true })
         }
         if (response) {

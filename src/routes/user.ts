@@ -21,7 +21,7 @@ router.get('/sendCSVFile', userController.sendCSVFile)
 
 //  ------  Account Routes  -------
 router.get('/profile', userController?.getProfile)
-router.put('/profile/update', userController?.updateProfile)
+router.put('/profile/update', userValidation?.profileUpdate, userController?.updateProfile)
 
 //  ------  Home Page Routes  ------
 router.get('/homePage', userController.homePage)
@@ -38,7 +38,8 @@ router.get('/workSpaces/manager', userController.getWorkSpaceByManager)
 router.post('/workSpace/stadiums/add', workSpaceValidation.add_stadiums, userController.addStadiumByWorkspace)
 
 //  ------  Event Routes  ------
-router.get('/events', userController.getEvents)
+router.get('/myevents', userController.getMyEvents)
+router.get('/events' ,userController.getEvents)
 router.post('/event/get', userController.get_event_pagination)
 router.post('/event/volunteer/page', userController.get_event_pagination_for_volunteers)
 router.post('/event/add', eventValidation.createEvent, userController.createEvent)

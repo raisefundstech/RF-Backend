@@ -59,7 +59,7 @@ export const by_event_id = async (req: Request, res: Response, next: any) => {
 
 export const applyToEvent = async (req: Request, res: Response, next: any) => {
     const schema = Joi.object({
-        id: Joi.string().trim().required().error(new Error('event id is required!')),
+        _id: Joi.string().trim().required().error(new Error('event id is required!')),
         workSpaceId: Joi.string().trim().required().error(new Error('workSpaceId is required!'))
     })
     schema.validateAsync(req.body).then(result => {

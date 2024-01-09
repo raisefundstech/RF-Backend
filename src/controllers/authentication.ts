@@ -22,7 +22,7 @@ export const userSignUp = async (req: Request, res: Response) => {
         let isAlready: any = await userModel.findOne({ $or: [{ email: body.email }, { mobileNumber: body.mobileNumber }], isActive: true })
         if (isAlready?.email == body?.email) return res.status(409).json(new apiResponse(409, responseMessage?.alreadyEmail, {}))
         if (isAlready?.mobileNumber == body?.mobileNumber) return res.status(409).json(new apiResponse(409, responseMessage?.alreadyMobileNumber, {}))
-
+        
         body.volunteerId = await generateVolunteerCode();
 
         let response = await new userModel(body).save();
