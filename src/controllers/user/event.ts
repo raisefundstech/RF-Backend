@@ -5,7 +5,7 @@ import { Request, Response } from 'express'
 import { responseMessage } from '../../helpers'
 import { 
     volunteerInfoByEvent, applyOnEvent, withdrawFromEvent, getEventInfo, fetchAdminsAndSuperVolunteers, updateVolunteersRequestStatus,
-    updateVolunteersCheckInStatus, updateVolunteersCheckOutStatus, checkEventCreationTime
+    updateVolunteersCheckInStatus, updateVolunteersCheckOutStatus, checkEventCreationTime, userUpdated
 } from '../../helpers/eventQueries'
 import { eventModel, roomModel, userModel } from '../../database'
 import { getUser } from '../../helpers/userQueries'
@@ -250,7 +250,7 @@ export const updateEvent = async (req: Request, res: Response) => {
         }
         else return res.status(400).json(new apiResponse(400, responseMessage.updateDataError('event'), {}))
     } catch (error) {
-        return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, error));
+        return res.status(500).json(new apiResponse(500, responseMessage?.customMessage(error), error));
     }
 }
 
@@ -770,6 +770,7 @@ export const volunteerCheckIn = async (req: Request, res: Response) => {
         });
         // Wait for all promises to complete
         await Promise.all(volunteersCheckInStatus);
+        await userUpdated(body?._id,user?._id);
         return res.status(200).json(new apiResponse(200, "Volunteers checkedIn status has been updated successfully", {}));
     } catch (error) {
         return res.status(500).json(new apiResponse(500, responseMessage?.customMessage(error), {}));
@@ -859,6 +860,7 @@ export const volunteerCheckOut = async (req: Request, res: Response) => {
         });
         // Wait for all promises to complete
         await Promise.all(volunteersCheckOutStatus);
+        await userUpdated(body?._id,user?._id);
         return res.status(200).json(new apiResponse(200, "Volunteers attendance has been updated successfully", {}));
     } catch (error) {
         return res.status(500).json(new apiResponse(500, responseMessage?.customMessage(error), {}));

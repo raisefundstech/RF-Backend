@@ -202,7 +202,8 @@ export const updateVolunteerPosition = async (req: Request, res: Response) => {
         if (response) {
             return res.status(200).json(new apiResponse(200, 'Volunteer information updated successfully!', {}))
         }
-        else return res.status(404).json(new apiResponse(404, 'You need to have admin privilages to update volunteer information', {}))
+        // Have to implement notification functionality after updating volunteer profile by the admin 
+        else return res.status(403).json(new apiResponse(403, 'You need to have admin privileges to update volunteer information', {}))
     } catch (error) {
         return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, error));
     }
@@ -262,7 +263,15 @@ export const getUnverifiedVolunteers = async (req: Request, res: Response) => {
     let user: any = req.header('user');
     let workspaceId = req.query.workSpaceId; // Get workspaceId from query string parameter
     try {
-        const response = await userModel.find({ workSpaceId: ObjectId(workspaceId), isActive: true, userStatus: 0 },{ otp: 0, otpExpireTime: 0, device_token: 0, loginType: 0, createdAt: 0, updatedAt: 0 });
+        let userAuthority = await userModel.findOne({ _id: ObjectId(user._id), isActive: true }, { userType: 1 });
+        if (userAuthority.userType == 0 || userAuthority.userType > 1) {
+            return res.status(401).json(new apiResponse(401, responseMessage.deniedPermission, {}));
+        }
+        // Get all unverified volunteers from the database
+        const response = await userModel.find({ workSpaceId: ObjectId(workspaceId), isActive: true, userStatus: 0 },{ 
+            otp: 0, otpExpireTime: 0, device_token: 0, loginType: 0, createdAt: 0, updatedAt: 0,
+            __v:0, latitude:0, longitude:0, isActive:0
+        });
         if (response) {
             return res.status(200).json(new apiResponse(200, responseMessage.getDataSuccess('unverified volunteers'), response));
         } else {

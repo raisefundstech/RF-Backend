@@ -188,10 +188,10 @@ async function checkEventCreationTime(req: any): Promise<any> {
     const eventStartTime = new Date(startTime);
     const eventEndTime = new Date(endTime);
 
+    logger.info(eventDate.toString(), currentDate.toString(), eventStartTime.toString(), eventEndTime.toString())
     // Date comparisons
-    if (eventDate > eventStartTime || eventDate > eventEndTime || eventDate < currentDate ||
-        eventStartTime < currentDate || eventEndTime < currentDate || eventStartTime > eventEndTime) {
-        throw new Error("Invalid date/time combinations.");
+    if (eventDate < currentDate) {
+        throw new Error("Invalid event date, can't create event in past.");
     }
 
     // Duration check
@@ -352,6 +352,20 @@ async function getEventInfo(eventId: string): Promise<any> {
     }
 }
 
+async function userUpdated(eventId: string, userId: string){
+    try {
+        let response: any;
+        response = await eventModel.findOneAndUpdate({
+            _id: ObjectId(eventId),
+            isActive: true,
+        },{
+            updatedBy: ObjectId(userId)
+        });
+    } catch (error){
+        throw error;
+    }
+}
+
 export {
     volunteerInfoByEvent,
     applyOnEvent,
@@ -361,5 +375,6 @@ export {
     getEventInfo,
     updateVolunteersCheckInStatus,
     updateVolunteersCheckOutStatus,
-    checkEventCreationTime
+    checkEventCreationTime,
+    userUpdated
 };
