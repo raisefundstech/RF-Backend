@@ -264,7 +264,7 @@ export const getUnverifiedVolunteers = async (req: Request, res: Response) => {
     let workspaceId = req.query.workSpaceId; // Get workspaceId from query string parameter
     try {
         let userAuthority = await userModel.findOne({ _id: ObjectId(user._id), isActive: true }, { userType: 1 });
-        if (userAuthority.userType == 0 || userAuthority.userType > 1) {
+        if (userAuthority.userType != 1) {
             return res.status(401).json(new apiResponse(401, responseMessage.deniedPermission, {}));
         }
         // Get all unverified volunteers from the database

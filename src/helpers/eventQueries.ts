@@ -230,31 +230,40 @@ async function updateVolunteersRequestStatus(req: any, volunteerId: string, stat
     try {
         const { body } = req;
         let user: any = req.header('user')
+
+        const updateQuery: any = {
+            $set: {
+                "volunteerRequest.$.requestStatus": status
+            }
+        };
+
+        if (userNote && userNote.trim() !== "") {
+            updateQuery.$push = {
+                "volunteerRequest.$.userNote": {
+                    "note": userNote,
+                    "createdBy": ObjectId(user._id),
+                }
+            };
+        }
+
         const response = await eventModel.findOneAndUpdate(
             {
                 _id: ObjectId(body._id),
                 isActive: true,
                 "volunteerRequest.volunteerId": ObjectId(volunteerId),
             },
-            {
-                $set: {
-                    "volunteerRequest.$.requestStatus": status
-                },
-                $push: {
-                    "volunteerRequest.$.userNote": userNote
-                }
-            },
+            updateQuery,
             { new: true }
         );
 
         if (!response) {
-            logger.error("update volunteer request failed.");
+            logger.error("update volunteer request failed.",response);
             throw new Error("Document not found or criteria did not match.");
         }
         logger.info("Volunteer request successfully updated");
         return response;
     } catch (error) {
-        logger.error("Error updating volunteer request:", error.message);
+        logger.error("Error updating volunteer request:", error);
         return { error: `Invalid volunteerId ${volunteerId}, please correct the VolunteerId and try again`};
     }
 }

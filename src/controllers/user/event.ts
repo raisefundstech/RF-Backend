@@ -99,10 +99,7 @@ export const getEvents = async (req: Request, res: Response) => {
 
     // Allow Admins and super volunteers to view events across all workspaces and volunteers to view events in their workspace
     let userWorkSpace = await userModel.findOne({ _id: ObjectId(user._id) }, { workSpaceId: 1, userType: 1 });
-    let workSpaceId = userWorkSpace?.workSpaceId;
-    if(userWorkSpace?.userType === 1 || userWorkSpace?.userType === 2) {
-        workSpaceId = req?.query?.id || workSpaceId;
-    }
+    let workSpaceId = userWorkSpace?.workSpaceId.toString();
 
     if(workSpaceId == null) return res.status(400).json(new apiResponse(400, "Please provide a valid workspaceid and try again", {}))
 
@@ -179,7 +176,7 @@ export const createEvent = async (req: Request, res: Response) => {
         let userInfo = await getUser(user?._id, true);
         logger.info(userInfo?.length);
 
-        if(userInfo[0]?.userType === 0 || userInfo[0]?.userType === 2 || userInfo[0]?.userType > 2) {
+        if(userInfo[0]?.userType != 1) {
             return res.status(400).json(new apiResponse(400, "You are not authorized to create event.", {}));
         }
 
@@ -240,7 +237,7 @@ export const updateEvent = async (req: Request, res: Response) => {
             if (body.volunteerSize < 2) return res.status(400).json(new apiResponse(400, "Please add volunteer size more than 1 . ", {}))
         }
         let userAuthority = await userModel.findOne({ _id: ObjectId(user?._id) }, { userType: 1 });
-        if(userAuthority?.userType === 0 || userAuthority?.userType == 2 || userAuthority?.userType > 2){
+        if(userAuthority?.userType != 1){
             throw new Error("You are not authorized to update event.");
         }
         response = await eventModel.findOneAndUpdate({ _id: ObjectId(body._id), isActive: true }, body, { new: true });
@@ -277,7 +274,7 @@ export const deleteEvent = async (req: Request, res: Response) => {
     let user: any = req.header('user'), response: any
     try {
         let userAuthority = await getUser(user?._id, true);
-        if (userAuthority[0]?.userType === 0 || userAuthority[0]?.userType === 2 || userAuthority[0]?.userType > 2) {
+        if (userAuthority[0]?.userType != 1) {
             throw new Error("You are not authorized to delete event.");
         }
         response = await eventModel.findOneAndUpdate({ _id: ObjectId(req.params.id), isActive: true, startTime: { $gte: new Date() } }, { isActive: false });
@@ -394,10 +391,14 @@ export const apply = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any, body = req.body, match: any = {}, findUser: any
     try {
-        let getUserWorkSpace = await userModel.findOne({ _id: ObjectId(user._id) }, { workSpaceId: 1 });
+        let getUser = await userModel.findOne({ _id: ObjectId(user._id) }, { workSpaceId: 1, userStatus: 1, userType: 1 });
         
-        if(getUserWorkSpace?.workSpaceId != body.workSpaceId) {
+        if(getUser?.workSpaceId != body.workSpaceId) {
             throw new Error("You can't apply to an event located in different workstation, please switch the workstation and try again.");
+        }
+
+        if(getUser?.userStatus != 1) {
+            throw new Error("You are not authorized to apply for an event, please contact your admin.");
         }
 
         const result = await applyOnEvent(req,user?._id);
@@ -486,8 +487,8 @@ export const updateVolunteers = async (req: Request, res: Response) => {
 
         let userAuthority = await userModel.findOne({ _id: ObjectId(user?._id) }, { userType: 1 });
 
-        if(userAuthority?.userType === 0 || userAuthority?.userType > 2){
-            throw new Error("You are not authorized to update event status.");
+        if(userAuthority?.userType != 1 && userAuthority?.userType != 2){
+            throw new Error("You are not authorized to update volunteer request status.");
         }
 
         var requestStatus = req.body?.volunteerRequest;
@@ -504,7 +505,8 @@ export const updateVolunteers = async (req: Request, res: Response) => {
         }
 
         let responseData = getEvent?.volunteerRequest?.filter(data => data?.requestStatus === "APPROVED");
-        if (getEvent?.volunteerSize < (responseData?.length + body?.volunteerRequest?.length)) {
+        let approvedVolunteersInBody = body?.volunteerRequest?.filter(data => data?.requestStatus === "APPROVED");
+        if (getEvent?.volunteerSize < (responseData?.length + approvedVolunteersInBody?.length)) {
             return res.status(400).json(new apiResponse(400, `The current request exceeds the limit of available volunteer slots. You can only approve volunteers within the limit of ${getEvent?.volunteerSize}.`, {}))
         }
         
@@ -737,7 +739,7 @@ export const volunteerCheckIn = async (req: Request, res: Response) => {
     try {
         // Check user authority
         let userAuthority = await userModel.findOne({ _id: ObjectId(user?._id) }, { userType: 1 });
-        if(userAuthority?.userType === 0 || userAuthority?.userType > 2){
+        if(userAuthority?.userType != 1 && userAuthority?.userType != 2){
             throw new Error("You are not authorized to update event status.");
         }
 
@@ -790,7 +792,7 @@ export const volunteerCheckOut = async (req: Request, res: Response) => {
     try {
         // Check user authority
         let userAuthority = await userModel.findOne({ _id: ObjectId(user?._id) }, { userType: 1, firstName: 1, lastName: 1 });
-        if(userAuthority?.userType === 0 || userAuthority?.userType > 2){
+        if(userAuthority?.userType != 1 && userAuthority?.userType != 2){
             throw new Error("You are not authorized to update event status.");
         }
         // Check request status

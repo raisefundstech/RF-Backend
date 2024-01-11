@@ -14,6 +14,9 @@ export const createWorkSpace = async (req: Request, res: Response) => {
         if (isExist) {
             return res.status(409).json(new apiResponse(409, responseMessage?.dataAlreadyExist('work space'), {}));
         }
+        if(user?.type != 1){
+           return res.status(400).json(new apiResponse(400, responseMessage?.deniedPermission, {}));
+        }
         body.createdBy = user?._id;
         response = await new workSpaceModel(body).save();
         if (response) return res.status(200).json(new apiResponse(200, responseMessage.addDataSuccess('work space'), response))
@@ -40,7 +43,7 @@ export const getWorkSpace = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any
     try {
-        response = await workSpaceModel.find({ isActive: true }, { name: 1, address: 1, latitude: 1, longitude: 1 }).sort({ createdAt: -1 });
+        response = await workSpaceModel.find({ isActive: true }, { name: 1, address: 1 }).sort({ createdAt: -1 });
 
         if (response) return res.status(200).json(new apiResponse(200, responseMessage.getDataSuccess('work space'), response))
         else return res.status(400).json(new apiResponse(400, responseMessage.getDataNotFound('work space'), {}))
@@ -80,6 +83,9 @@ export const deleteWorkSpace = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any
     try {
+        if(user?.type != 1){
+              return res.status(400).json(new apiResponse(400, responseMessage?.deniedPermission, {}));
+          }
         response = await workSpaceModel.findOneAndUpdate({ _id: ObjectId(req.params.id), isActive: true }, { isActive: false });
         if (response) return res.status(200).json(new apiResponse(200, responseMessage.deleteDataSuccess('work space'), {}))
         else return res.status(400).json(new apiResponse(400, responseMessage.getDataNotFound('work space'), {}))
@@ -149,6 +155,10 @@ export const addStadiumByWorkspace = async (req: Request, res: Response) => {
             return res.status(400).json(new apiResponse(400, responseMessage.updateDataError('Cant add more than one stadium at a time'), {}));
         }
 
+        if(user?.type != 1){
+            return res.status(400).json(new apiResponse(400, responseMessage?.deniedPermission, {}));
+        }
+
         // Check if there is an existing object with the same name and address
         const stadiumName = body?.stadiums[0]?.Name;
         const stadiumAddress = body?.stadiums[0]?.Address;
@@ -167,7 +177,7 @@ export const addStadiumByWorkspace = async (req: Request, res: Response) => {
             {
               $match: {
                 "stadiums.Name": {
-                  $regex: new RegExp(`^${stadiumName}$`,'i') // Specify the stadium name you're looking for
+                  $regex: new RegExp(`^${stadiumName}$`,'i') 
                 }
               }
             }
@@ -177,7 +187,7 @@ export const addStadiumByWorkspace = async (req: Request, res: Response) => {
         
         if (duplicateCount) {
           console.log(`Stadium with name "${stadiumName}" and address "${stadiumAddress}" already exists.`);
-          return res.status(400).json(new apiResponse(400, responseMessage.updateDataError('Duplicate stadium'), {}));
+          return res.status(409).json(new apiResponse(409, responseMessage.updateDataError('Duplicate stadium'), {}));
         }
         
         logger.info(duplicateCount)
@@ -196,6 +206,6 @@ export const addStadiumByWorkspace = async (req: Request, res: Response) => {
             return res.status(400).json(new apiResponse(400, responseMessage.updateDataError('work space'), {}));
         }
     } catch (error) {
-        // Handle error
+        return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, error));
     }
 }

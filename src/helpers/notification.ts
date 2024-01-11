@@ -4,16 +4,19 @@ import { userModel } from '../database';
 
 const ObjectId = require('mongoose').Types.ObjectId
 
+// Function to send push notifications to multiple Expo push tokens
 export const sendNotification = async (expoPushTokens: String[], users: Object, data: Object) => {
-
     const expo = new Expo();
     let messages: any = [];
 
+    // Iterate through each push token
     for(let pushToken of expoPushTokens) {
+        // Check if the push token is a valid Expo push token
         if (!Expo.isExpoPushToken(pushToken)) {
             logger.error(`Push token ${pushToken} is not a valid Expo push token`);
             continue;
         }
+        // Create a message object with push token, title, body, and data
         messages.push({
             to: pushToken,
             sound: 'default',
@@ -23,38 +26,30 @@ export const sendNotification = async (expoPushTokens: String[], users: Object, 
         })
     }
 
-    // The Expo push notification service accepts batches of notifications so
-    // that the server dosen't need to send 1000 requests to send 1000 notifications.
-    // Recommendation is to batch the notifications to reduce the number of requests
-    // and to compress them (notifications with similar content will get compressed.
+    // The Expo push notification service accepts batches of notifications
+    // to reduce the number of requests and compress similar notifications
     let chunks = expo.chunkPushNotifications(messages);
     let tickets = [];
-    (async () => {
-    // Send the chunks to the Expo push notification service. There are
-    // different strategies you could use. A simple one is to send one chunk at a
-    // time, which nicely spreads the load out over time:
+
+    // Send each chunk of notifications to the Expo push notification service
     for (let chunk of chunks) {
-        try{
+        try {
             let ticketChunk = await expo.sendPushNotificationsAsync(chunk);
             logger.info(ticketChunk);
             tickets.push(...ticketChunk);
-            // NOTE: If a ticket contains an error code in ticket.details.error,
-            // handle it appropriately. The error codes are listed in the Expo
-            // documentation:
-            // https://docs.expo.io/push-notifications/sending-notifications/#individual-errors
         } catch (error) {
             logger.error(error);
         }
-    }})();
+    }
 
+    // Process the response tickets from the Expo push notification service
     for (const ticket of tickets) {
-
         if (ticket.status === "error") {
             if (ticket.details && ticket.details.error === "DeviceNotRegistered") {
                 let message = ticket.message;
                 let match = message.match(/"ExponentPushToken\[(.*?)\]"/);
                 let token = match ? match[0] : null;
-                // Delete expo token since the device is not registered anymore
+                // Delete the Expo token since the device is not registered anymore
                 await userModel.findOneAndUpdate({_id: users['token'],device_token: token}, { $pull: { device_token: token } })
                 logger.error(`Push notification status: ${ticket.status} failed with following error message: ${message}`)
             }
@@ -66,12 +61,14 @@ export const sendNotification = async (expoPushTokens: String[], users: Object, 
     }
 } 
 
+// Function to fetch user tokens based on volunteer ID
 export const fetchUserTokens = async (volunteerId: string) => {
     var tokens: any = [];
     tokens = await userModel.findOne({_id: ObjectId(volunteerId)}, {device_token: 1});
     return tokens?.device;
 }
 
+// Function to map tokens to user IDs
 export const mapTokensToUser = async (volunteerId: string, tokens: string[]) => {
     var users: any = {};
     for (const token of tokens) {

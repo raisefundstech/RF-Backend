@@ -52,6 +52,20 @@ export const updateEvent = async (req: Request, res: Response, next: any) => {
     })
 }
 
+export const update_volunteer_request_status = async (req: Request, res: Response, next: any) => {
+    const schema = Joi.object({
+        _id: Joi.string().trim().required().error(new Error('event id is required!')),
+        volunteerRequest: Joi.array().required().default([]).error(new Error('volunteerRequest is array!')),
+    });
+    schema.validateAsync(req.body).then(result => {
+        if (!isValidObjectId(result._id)) return res.status(400).json(new apiResponse(400, 'invalid id', {}));
+        req.body = result;
+        return next()
+    }).catch(error => {
+        res.status(400).json(new apiResponse(400, error.message, {}))
+    })
+}
+
 export const by_event_id = async (req: Request, res: Response, next: any) => {
     if (!isValidObjectId(req.params.id)) return res.status(400).json(new apiResponse(400, responseMessage.invalidId('eventId'), {}));
     next()

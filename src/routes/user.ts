@@ -50,7 +50,7 @@ router.post('/event/apply', eventValidation.applyToEvent, userController.apply)
 router.delete('/event/withdraw/:id',eventValidation.by_event_id, userController.withdraw)
 router.post('/event/volunteers/get', userController.getVolunteerByEvent)
 router.put('/event/volunteers/add', userController.addVolunteerToEvent)
-router.patch('/event/volunteers/request', eventValidation.updateEvent, userController.updateVolunteers)
+router.patch('/event/volunteers/request', eventValidation.update_volunteer_request_status, userController.updateVolunteers)
 
 //  -------  Volunteers  -------
 router.get('/volunteers', userValidation.checkWorkSpaceId, userController.getVolunteers)
