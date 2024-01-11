@@ -121,6 +121,7 @@ export const getEvents = async (req: Request, res: Response) => {
                     notes: 1,
                     isActive: 1,
                     createdBy: 1,
+                    rfCoins: 1,
                     requestStatus: {
                         $let: {
                             vars: {
