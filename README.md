@@ -23,7 +23,3 @@ To use this backend, make requests to `http://localhost:3000/` followed by the e
 ## Contributing
 
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for more details.
-
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE.md) file for details.
