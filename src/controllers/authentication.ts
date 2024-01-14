@@ -9,6 +9,7 @@ import { responseMessage } from '../helpers'
 import { generateVolunteerCode, generateOTP } from '../helpers/generateCode'
 import { sendEmail } from '../helpers/email'
 import { sendSMS,validOTP, sendLoginSMS } from '../helpers/message'
+import { deleteUserSessions } from '../helpers/authenticationQueries'
 const twilio: any = config.get("twilio");
 const client = require('twilio')(twilio.accountSid, twilio.authToken);
 const ObjectId = require('mongoose').Types.ObjectId
@@ -87,7 +88,7 @@ export const otpVerification = async (req: Request, res: Response) => {
         let body = req.body
         body.isActive = true
 
-        let findUser = await userModel.findOne({ otp: body.otp, mobileNumber: body.mobileNumber, isActive: true })
+        let findUser = await userModel.findOne({ otp: body.otp, mobileNumber: body.mobileNumber, isActive: true },{_id:1,otp:1,otpExpireTime:1})
 
         if (!findUser) return res.status(400).json(new apiResponse(400, responseMessage?.invalidOTP, {}))
 
@@ -98,31 +99,35 @@ export const otpVerification = async (req: Request, res: Response) => {
 
         if (findUser) {
 
-            // Removing the functionality of logout from all devices upon login from a device
-
-            // let LoggedIn = await userSessionModel.findOne({createdBy: ObjectId(findUser._doc._id.toString())})
-            // let logout_response = null;
+            // Only one device can be logged in at a time
+            let LoggedIn = await userSessionModel.findOne({createdBy: findUser?._id})
+            let logout_response = null;
             
-            // if(LoggedIn) {
-            //     var delete_session = await deleteSession(findUser._doc._id);
-            //     console.log(delete_session);
-            //     logout_response = deleteSession != null ? responseMessage?.logoutDevices : '';
-            // }
+            if(LoggedIn) {
+                let delete_sessions: any = await deleteUserSessions(findUser?._id);
+                if(delete_sessions?.error){
+                    throw new Error(responseMessage?.customMessage('Error in deleting sessions'));
+                }
+                logout_response = delete_sessions != null ? delete_sessions : 'User have no active session';
+                logger.info(logout_response);
+            }
 
-            // $addToSet: { device_token: device_token } } will be implemented into the notifications feature
             let response = await userModel.findOneAndUpdate(
                 { otp: body.otp, mobileNumber: body.mobileNumber, isActive: true },
                 {
-                  $set: {
-                    otp: null,
-                    otpExpireTime: null,
-                  },
-                  $addToSet: {
-                    device_token: body.device_token,
-                  },
+                    $set: {
+                        otp: null,
+                        otpExpireTime: null,
+                        device_token: [],
+                    },
                 },
                 { new: true }
             );
+
+            if (response) {
+                response.device_token.push(body.device_token);
+                await response.save();
+            }
 
             const token = jwt.sign({
                 _id: response._id,
@@ -154,7 +159,8 @@ export const otpVerification = async (req: Request, res: Response) => {
                 tags: response?.tags,
                 token
             }
-            return res.status(200).json(new apiResponse(200, responseMessage?.OTPverified, responseIs))
+            let verfication_logout_endpoint_response = `${responseMessage?.OTPverified} & ${logout_response}`
+            return res.status(200).json(new apiResponse(200,verfication_logout_endpoint_response, responseIs))
         } else {
             return res.status(501).json(new apiResponse(501, 'Something went wrong', {}))
         }
