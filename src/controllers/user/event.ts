@@ -275,7 +275,7 @@ export const deleteEvent = async (req: Request, res: Response) => {
     let user: any = req.header('user'), response: any
     try {
         let userAuthority = await getUser(user?._id, true);
-        if (userAuthority[0]?.userType != 1) {
+        if (userAuthority?.userType != 1) {
             throw new Error("You are not authorized to delete event.");
         }
         response = await eventModel.findOneAndUpdate({ _id: ObjectId(req.params.id), isActive: true, startTime: { $gte: new Date() } }, { isActive: false });
