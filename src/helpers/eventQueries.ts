@@ -7,7 +7,7 @@ async function volunteerInfoByEvent (req: any, user: any): Promise<any> {
     const events = [
         {
             $match: {
-            _id: ObjectId(req.params.id),
+            _id: ObjectId(req?.params?.id),
             isActive: true
             }
         },
@@ -117,10 +117,36 @@ async function volunteerInfoByEvent (req: any, user: any): Promise<any> {
 
 async function applyOnEvent(req: any, userId: string): Promise<any> {
     try {
-        let response: any, body = req.body; 
+        let response: any = {}, body = req.body; 
+
+        const getEventData = await eventModel.findOne({_id: ObjectId(body._id), isActive: true},{date:1,startTime:1,endTime:1});
+
+        const eventsAppliedOnSameDay = await eventModel.aggregate([
+            {
+              $match: {
+                _id: { $ne: ObjectId(body?._id) }, // Exclude the current event
+                isActive: true,
+                date: {
+                  $eq: new Date(getEventData?.date)
+                },
+                volunteerRequest: {
+                    $elemMatch: { volunteerId: ObjectId(userId) }
+                }
+              }
+            }
+        ]);
+
+
+        if(eventsAppliedOnSameDay.length > 0) {
+            response['error'] = `Volunteer has already applied to another event ${eventsAppliedOnSameDay?.[0]?.name} on the same day.`;
+            return response
+        }
+
+        // logger.info(eventsAppliedOnSameDay);
+
         // Check if volunteer has already applied
         const existingApplication = await eventModel.findOne({
-            _id: ObjectId(body.id),
+            _id: ObjectId(body?._id),
             isActive: true,
             volunteerRequest: {
                 $elemMatch: { volunteerId: ObjectId(userId) }
@@ -128,11 +154,12 @@ async function applyOnEvent(req: any, userId: string): Promise<any> {
         });
 
         if (existingApplication) {
-            throw new Error("Volunteer has already applied to this event.");
+            response['error'] = "Volunteer has already applied to this event.";
+            return response;
         }
 
         response = await eventModel.findOneAndUpdate({
-            _id: ObjectId(body.id),
+            _id: ObjectId(body._id),
             isActive: true,
         }, {
             $push: {
@@ -148,6 +175,31 @@ async function applyOnEvent(req: any, userId: string): Promise<any> {
         throw error;
     }
 }
+
+async function checkEventCreationTime(req: any): Promise<any> {
+    const { date, startTime, endTime }: { date: any; startTime: any; endTime: any } = req.body;
+
+    if (date == null || startTime == null || endTime == null) {
+        throw new Error("Event date and Start/End Time cannot be null.");
+    }
+
+    const eventDate = new Date(date);
+    const currentDate = new Date();
+    const eventStartTime = new Date(startTime);
+    const eventEndTime = new Date(endTime);
+
+    logger.info(eventDate.toString(), currentDate.toString(), eventStartTime.toString(), eventEndTime.toString())
+    // Date comparisons
+    if (eventDate < currentDate) {
+        throw new Error("Invalid event date, can't create event in past.");
+    }
+
+    // Duration check
+    if (startTime - endTime < 3 * 3600000) {
+        throw new Error("Event duration cannot be less than 3 hours.");
+    }
+}
+
 
 async function withdrawFromEvent(req: any): Promise<any> {
     try {
@@ -178,31 +230,40 @@ async function updateVolunteersRequestStatus(req: any, volunteerId: string, stat
     try {
         const { body } = req;
         let user: any = req.header('user')
+
+        const updateQuery: any = {
+            $set: {
+                "volunteerRequest.$.requestStatus": status
+            }
+        };
+
+        if (userNote && userNote.trim() !== "") {
+            updateQuery.$push = {
+                "volunteerRequest.$.userNote": {
+                    "note": userNote,
+                    "createdBy": ObjectId(user._id),
+                }
+            };
+        }
+
         const response = await eventModel.findOneAndUpdate(
             {
-                _id: ObjectId(body.id),
+                _id: ObjectId(body._id),
                 isActive: true,
                 "volunteerRequest.volunteerId": ObjectId(volunteerId),
             },
-            {
-                $set: {
-                    "volunteerRequest.$.requestStatus": status
-                },
-                $push: {
-                    "volunteerRequest.$.userNote": userNote
-                }
-            },
+            updateQuery,
             { new: true }
         );
 
         if (!response) {
-            logger.error("update volunteer request failed.");
+            logger.error("update volunteer request failed.",response);
             throw new Error("Document not found or criteria did not match.");
         }
         logger.info("Volunteer request successfully updated");
         return response;
     } catch (error) {
-        logger.error("Error updating volunteer request:", error.message);
+        logger.error("Error updating volunteer request:", error);
         return { error: `Invalid volunteerId ${volunteerId}, please correct the VolunteerId and try again`};
     }
 }
@@ -300,6 +361,20 @@ async function getEventInfo(eventId: string): Promise<any> {
     }
 }
 
+async function userUpdated(eventId: string, userId: string){
+    try {
+        let response: any;
+        response = await eventModel.findOneAndUpdate({
+            _id: ObjectId(eventId),
+            isActive: true,
+        },{
+            updatedBy: ObjectId(userId)
+        });
+    } catch (error){
+        throw error;
+    }
+}
+
 export {
     volunteerInfoByEvent,
     applyOnEvent,
@@ -308,5 +383,7 @@ export {
     fetchAdminsAndSuperVolunteers,
     getEventInfo,
     updateVolunteersCheckInStatus,
-    updateVolunteersCheckOutStatus
+    updateVolunteersCheckOutStatus,
+    checkEventCreationTime,
+    userUpdated
 };
