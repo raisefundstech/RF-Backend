@@ -20,7 +20,11 @@ const eventSchema: any = new mongoose.Schema({
             appliedAt: { type: Date, default: new Date() },
             checkedIn: { type: Boolean, default: false },
             checkedOut: { type: Boolean, default: false },
-            userNote: { type: [{ type: String }], default: [] },
+            userNote: [{
+                note: { type: String },
+                createdAt: { type: Date, default: Date.now },
+                createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "user" }
+            }],
         }], default: []
     },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "user" },

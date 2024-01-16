@@ -21,7 +21,7 @@ export const updateOurTeam = async (req: Request, res: Response) => {
     reqInfo(req)
     let response: any, body = req.body;
     try {
-        response = await ourTeamModel.findOneAndUpdate({ _id: ObjectId(body.id), isActive: true }, body, { new: true })
+        response = await ourTeamModel.findOneAndUpdate({ _id: ObjectId(body._id), isActive: true }, body, { new: true })
         if (response) return res.status(200).json(new apiResponse(200, responseMessage.updateDataSuccess('meet our team'), response))
         else return res.status(400).json(new apiResponse(400, responseMessage.updateDataError('meet our team'), {}))
     } catch (error) {

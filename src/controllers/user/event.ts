@@ -5,7 +5,7 @@ import { Request, Response } from 'express'
 import { responseMessage } from '../../helpers'
 import { 
     volunteerInfoByEvent, applyOnEvent, withdrawFromEvent, getEventInfo, fetchAdminsAndSuperVolunteers, updateVolunteersRequestStatus,
-    updateVolunteersCheckInStatus, updateVolunteersCheckOutStatus
+    updateVolunteersCheckInStatus, updateVolunteersCheckOutStatus, checkEventCreationTime, userUpdated
 } from '../../helpers/eventQueries'
 import { eventModel, roomModel, userModel } from '../../database'
 import { getUser } from '../../helpers/userQueries'
@@ -15,6 +15,7 @@ import { workSpaceModel } from '../../database/models/workSpace'
 import { sendNotification, fetchUserTokens, mapTokensToUser } from '../../helpers/notification'
 
 const ObjectId = require('mongoose').Types.ObjectId
+const moment = require('moment-timezone');
 
 // Fetch my events based on the user
 export const getMyEvents = async (req: Request, res: Response) => {
@@ -97,13 +98,10 @@ export const getEvents = async (req: Request, res: Response) => {
     let user: any = req.header('user'), response: any
 
     // Allow Admins and super volunteers to view events across all workspaces and volunteers to view events in their workspace
-    let userWorkSpace = await userModel.findOne({ _id: ObjectId(user._id) }, { workSpaceId: 1 });
-    let workSpaceId = userWorkSpace?.workSpaceId;
-    if(user.type === 1 || user.type === 2) {
-        workSpaceId = req?.params?.id;
-    }
+    let userWorkSpace = await userModel.findOne({ _id: ObjectId(user._id) }, { workSpaceId: 1, userType: 1 });
+    let workSpaceId = userWorkSpace?.workSpaceId.toString();
 
-    if(userWorkSpace?.workSpaceId == null) return res.status(400).json(new apiResponse(400, "Please select a valid workspace from your profile and try again.", {}))
+    if(workSpaceId == null) return res.status(400).json(new apiResponse(400, "Please provide a valid workspaceid and try again", {}))
 
     try {
         response = await eventModel.aggregate([
@@ -179,11 +177,16 @@ export const createEvent = async (req: Request, res: Response) => {
         let userInfo = await getUser(user?._id, true);
         logger.info(userInfo?.length);
 
-        if(userInfo[0]?.userType === 0 || userInfo[0]?.userType === 2 || userInfo[0]?.userType > 2) {
+        if(userInfo[0]?.userType != 1) {
             return res.status(400).json(new apiResponse(400, "You are not authorized to create event.", {}));
         }
 
-        if (new Date(body.startTime) < new Date() || new Date(body.endTime) < new Date() || new Date(body.startTime).toString() == new Date(body.endTime).toString()) return res.status(400).json(new apiResponse(400, "Invalid start time or end time!", {}))
+        let eventCreationResponse = await checkEventCreationTime(req);
+
+        if(eventCreationResponse?.error){
+            throw new Error(eventCreationResponse.error);
+        }
+        
         if (body.volunteerSize < 2) return res.status(400).json(new apiResponse(400, "Please add volunteer size more than 1 . ", {}))
 
         let validWorkSpace = await workSpaceModel.findOne({ _id: ObjectId(body?.workSpaceId), isActive: true });
@@ -235,7 +238,7 @@ export const updateEvent = async (req: Request, res: Response) => {
             if (body.volunteerSize < 2) return res.status(400).json(new apiResponse(400, "Please add volunteer size more than 1 . ", {}))
         }
         let userAuthority = await userModel.findOne({ _id: ObjectId(user?._id) }, { userType: 1 });
-        if(userAuthority?.userType === 0 || userAuthority?.userType == 2 || userAuthority?.userType > 2){
+        if(userAuthority?.userType != 1){
             throw new Error("You are not authorized to update event.");
         }
         response = await eventModel.findOneAndUpdate({ _id: ObjectId(body._id), isActive: true }, body, { new: true });
@@ -245,7 +248,7 @@ export const updateEvent = async (req: Request, res: Response) => {
         }
         else return res.status(400).json(new apiResponse(400, responseMessage.updateDataError('event'), {}))
     } catch (error) {
-        return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, error));
+        return res.status(500).json(new apiResponse(500, responseMessage?.customMessage(error), error));
     }
 }
 
@@ -389,18 +392,22 @@ export const apply = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any, body = req.body, match: any = {}, findUser: any
     try {
-        let getUserWorkSpace = await userModel.findOne({ _id: ObjectId(user._id) }, { workSpaceId: 1 });
-
-        if(getUserWorkSpace?.workSpaceId != body.workSpaceId){
+        let getUser = await userModel.findOne({ _id: ObjectId(user._id) }, { workSpaceId: 1, userStatus: 1, userType: 1 });
+        
+        if(getUser?.workSpaceId != body.workSpaceId) {
             throw new Error("You can't apply to an event located in different workstation, please switch the workstation and try again.");
         }
 
+        if(getUser?.userStatus != 1) {
+            throw new Error("You are not authorized to apply for an event, please contact your admin.");
+        }
+
         const result = await applyOnEvent(req,user?._id);
-        // logger.info(result);
 
         if(result?.error){
-            throw new Error(result.error);
+            return res.status(409).json(new apiResponse(409, result.error, {}));
         }
+        // logger.info(result)
 
         response = await fetchAdminsAndSuperVolunteers(body?.workSpaceId)
         // logger.info(response);
@@ -481,8 +488,8 @@ export const updateVolunteers = async (req: Request, res: Response) => {
 
         let userAuthority = await userModel.findOne({ _id: ObjectId(user?._id) }, { userType: 1 });
 
-        if(userAuthority?.userType === 0 || userAuthority?.userType > 2){
-            throw new Error("You are not authorized to update event status.");
+        if(userAuthority?.userType != 1 && userAuthority?.userType != 2){
+            throw new Error("You are not authorized to update volunteer request status.");
         }
 
         var requestStatus = req.body?.volunteerRequest;
@@ -491,7 +498,7 @@ export const updateVolunteers = async (req: Request, res: Response) => {
             return res.status(400).json(new apiResponse(400, "Invalid request. Please provide valid data.", {}));
         }
 
-        var getEvent = await eventModel.findOne({ _id: ObjectId(body.id), isActive: true })
+        var getEvent = await eventModel.findOne({ _id: ObjectId(body._id), isActive: true })
         logger.info(getEvent?._id);
 
         if (getEvent == null) {
@@ -499,7 +506,8 @@ export const updateVolunteers = async (req: Request, res: Response) => {
         }
 
         let responseData = getEvent?.volunteerRequest?.filter(data => data?.requestStatus === "APPROVED");
-        if (getEvent?.volunteerSize < (responseData?.length + body?.volunteerRequest?.length)) {
+        let approvedVolunteersInBody = body?.volunteerRequest?.filter(data => data?.requestStatus === "APPROVED");
+        if (getEvent?.volunteerSize < (responseData?.length + approvedVolunteersInBody?.length)) {
             return res.status(400).json(new apiResponse(400, `The current request exceeds the limit of available volunteer slots. You can only approve volunteers within the limit of ${getEvent?.volunteerSize}.`, {}))
         }
         
@@ -516,7 +524,7 @@ export const updateVolunteers = async (req: Request, res: Response) => {
 
             if (tokens?.length > 0) {
                 userTokenMapper = mapTokensToUser(data?.volunteerId, tokens);
-                let date = await getEventInfo(body?.id);
+                let date = await getEventInfo(body?._id);
                 const formattedDate = date?.toLocaleString('en-US', { month: 'short', day: '2-digit' });
                 let userInfo = await getUser(data?.volunteerId, true); 
                 payload = {
@@ -524,7 +532,7 @@ export const updateVolunteers = async (req: Request, res: Response) => {
                     message: `Hello, ${userInfo?.[0]?.firstName} your event request has been ${body?.requestStatus} for the ${date?.name} on ${formattedDate}.`,
                     data: {
                         type: 1,
-                        eventId: body.id
+                        eventId: body._id
                     }
                 };
                 sendNotification(tokens, userTokenMapper, payload);
@@ -702,7 +710,7 @@ export const addVolunteerToEvent = async (req: Request, res: Response) => {
     let user: any = req.header('user'), response: any, body = req.body;
     try {
         response = await eventModel.findOneAndUpdate({
-            _id: ObjectId(body.id),
+            _id: ObjectId(body._id),
             isActive: true
         }, {
             $push: {
@@ -732,37 +740,40 @@ export const volunteerCheckIn = async (req: Request, res: Response) => {
     try {
         // Check user authority
         let userAuthority = await userModel.findOne({ _id: ObjectId(user?._id) }, { userType: 1 });
-        if(userAuthority?.userType === 0 || userAuthority?.userType > 2){
+        if(userAuthority?.userType != 1 && userAuthority?.userType != 2){
             throw new Error("You are not authorized to update event status.");
         }
 
         // Check request status
         var requestStatus = req.body?.volunteerRequest;
         if (requestStatus == null || requestStatus.length === 0 || body?.startTime == null) {
-            return res.status(400).json(new apiResponse(400, "Invalid request. Please provide valid data.", {}));
+            return res.status(400).json(new apiResponse(400, "Invalid request. Please provide VolunteerRequest data.", {}));
         }
 
         // Check check-in time, admin can mark attendance 3 hours before the event or 1 hour after the event
-        const eventStartTime = new Date(body?.startTime);
-        const currentTime = new Date();
-        const threeHoursBeforeEvent = new Date(eventStartTime.getTime() - (3 * 60 * 60 * 1000));
-        const formattedBefore = threeHoursBeforeEvent.toLocaleString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true });
-        const oneHourAfterEvent = new Date(eventStartTime.getTime() + (1 * 60 * 60 * 1000));
-        const formattedAfter = oneHourAfterEvent.toLocaleString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true });
+        // Currently commented out as per the discussion with the team
+        // const eventStartTimeUTC = moment.utc(body?.startTime);
+        // const currentTimeUTC = new Date();
+        // const threeHoursBeforeEventUTC = eventStartTimeUTC.clone().subtract(3, 'hours');
+        // const formattedBefore = threeHoursBeforeEventUTC.format('h:mm A');
+        // const oneHourAfterEventUTC = eventStartTimeUTC.clone().add(1, 'hour');
+        // const formattedAfter = oneHourAfterEventUTC.format('h:mm A');
 
-        if (currentTime < threeHoursBeforeEvent || currentTime > oneHourAfterEvent) {
-            var messgae = `Invalid check-in time. Check-in starts from ${formattedBefore} and ends at ${formattedAfter}`
-            return res.status(400).json(new apiResponse(400, messgae, {}));
-        }
+        // if (currentTimeUTC < threeHoursBeforeEventUTC || currentTimeUTC > oneHourAfterEventUTC) {
+        //     var messgae = `Invalid check-in time. Check-in starts from ${formattedBefore} and ends at ${formattedAfter}`
+        //     return res.status(400).json(new apiResponse(400, messgae, {}));
+        // }
+
         // Update check-in status for each volunteer
         const volunteersCheckInStatus = body?.volunteerRequest.map(async (data: any) => {
-            response = await updateVolunteersCheckInStatus(body?.id, data?.volunteerId);
+            response = await updateVolunteersCheckInStatus(body?._id, data?.volunteerId);
             if (response?.error) {
                 throw new Error(response.error);
             }
         });
         // Wait for all promises to complete
         await Promise.all(volunteersCheckInStatus);
+        await userUpdated(body?._id,user?._id);
         return res.status(200).json(new apiResponse(200, "Volunteers checkedIn status has been updated successfully", {}));
     } catch (error) {
         return res.status(500).json(new apiResponse(500, responseMessage?.customMessage(error), {}));
@@ -782,31 +793,34 @@ export const volunteerCheckOut = async (req: Request, res: Response) => {
     try {
         // Check user authority
         let userAuthority = await userModel.findOne({ _id: ObjectId(user?._id) }, { userType: 1, firstName: 1, lastName: 1 });
-        if(userAuthority?.userType === 0 || userAuthority?.userType > 2){
+        if(userAuthority?.userType != 1 && userAuthority?.userType != 2){
             throw new Error("You are not authorized to update event status.");
         }
         // Check request status
         var requestStatus = req.body?.volunteerRequest;
-        if (requestStatus == null || requestStatus.length === 0 || body?.endTime == null) {
-            return res.status(400).json(new apiResponse(400, "Invalid request. Please provide valid data.", {}));
+        if (requestStatus == null || requestStatus.length === 0) {
+            return res.status(400).json(new apiResponse(400, "Invalid request. Please provide VolunteerRequest data.", {}));
         }
-        // Check check-out time, admin can mark attendance 2 hours before the event or 2 hour after the event
-        const eventStartTime = new Date(body?.endTime);
-        const currentTime = new Date();
-        const twoHoursBeforeEvent = new Date(eventStartTime.getTime() - (2 * 60 * 60 * 1000));
-        const formattedBefore = twoHoursBeforeEvent.toLocaleString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true });
-        const twoHoursAfterEvent = new Date(eventStartTime.getTime() + (1 * 60 * 60 * 1000));
-        const formattedAfter = twoHoursAfterEvent.toLocaleString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true });
 
-        if (currentTime < twoHoursAfterEvent || currentTime > twoHoursAfterEvent) {
-            var messgae = `Invalid check-out time. Check-in starts from ${formattedBefore} and ends at ${formattedAfter}`
-            return res.status(400).json(new apiResponse(400, messgae, {}));
-        }
+        // Check check-out time, admin can mark attendance 2 hours before the event or 2 hour after the event
+        // currently suspending the check-out time validation
+        // const eventStartTime = new Date(body?.endTime);
+        // const currentTime = new Date();
+        // const twoHoursBeforeEvent = new Date(eventStartTime.getTime() - (2 * 60 * 60 * 1000));
+        // const formattedBefore = twoHoursBeforeEvent.toLocaleString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true });
+        // const twoHoursAfterEvent = new Date(eventStartTime.getTime() + (1 * 60 * 60 * 1000));
+        // const formattedAfter = twoHoursAfterEvent.toLocaleString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true });
+
+        // if (currentTime < twoHoursAfterEvent || currentTime > twoHoursAfterEvent) {
+        //     var messgae = `Invalid check-out time. Check-in starts from ${formattedBefore} and ends at ${formattedAfter}`
+        //     return res.status(400).json(new apiResponse(400, messgae, {}));
+        // }
+
         // Update check-in status for each volunteer
         const volunteersCheckOutStatus = body?.volunteerRequest.map(async (data: any) => {
             
             // update user attendance in attendance table
-            response = await updateVolunteersCheckOutStatus(body?.id, data?.volunteerId);
+            response = await updateVolunteersCheckOutStatus(body?._id, data?.volunteerId);
 
             if (response?.error) {
                 throw new Error(response?.error);
@@ -839,7 +853,7 @@ export const volunteerCheckOut = async (req: Request, res: Response) => {
                     message: `Hello, ${userInfo?.firstName}, your attendance has been marked for the ${body?.name} event on ${formattedDate} by ${userAuthority?.firstName}.`,
                     data: {
                         type: 1,
-                        eventId: body.id
+                        eventId: body._id
                     }
                 };
                 sendNotification(userInfo?.device_token, userTokenMapper, payload);
@@ -849,6 +863,7 @@ export const volunteerCheckOut = async (req: Request, res: Response) => {
         });
         // Wait for all promises to complete
         await Promise.all(volunteersCheckOutStatus);
+        await userUpdated(body?._id,user?._id);
         return res.status(200).json(new apiResponse(200, "Volunteers attendance has been updated successfully", {}));
     } catch (error) {
         return res.status(500).json(new apiResponse(500, responseMessage?.customMessage(error), {}));
