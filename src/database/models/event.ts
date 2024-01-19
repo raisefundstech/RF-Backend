@@ -3,7 +3,6 @@ import mongoose from 'mongoose';
 const eventSchema: any = new mongoose.Schema({
     workSpaceId: { type: mongoose.Schema.Types.ObjectId, default: null },
     name: { type: String, default: null },
-    address: { type: String, default: null },
     latitude: { type: Number, default: 0.0 },
     longitude: { type: Number, default: 0.0 },
     date: { type: Date, default: null },
@@ -12,6 +11,7 @@ const eventSchema: any = new mongoose.Schema({
     volunteerSize: { type: Number, default: 0 },
     notes: { type: String, default: null },
     rfCoins : { type: Number, default: 0 },
+    stadiumId: { type: mongoose.Schema.Types.ObjectId, default: null },
     volunteerRequest: {
         type: [{
             volunteerId: { type: mongoose.Schema.Types.ObjectId },
