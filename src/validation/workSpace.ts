@@ -52,16 +52,16 @@ export const fetch_stadium = async (req: Request, res: Response, next: any) => {
 
 export const add_stadiums = async (req: Request, res: Response, next: any) => {
     const stadiumSchema = Joi.object({
-        Name: Joi.string().required(),
-        Address: Joi.string().required(),
-        Latitude: Joi.number().default(0.0),
-        Longitude: Joi.number().default(0.0),
+        name: Joi.string().required(),
+        address: Joi.string().required(),
+        latitude: Joi.number().default(0.0),
+        longitude: Joi.number().default(0.0),
         stadiumPolicy: Joi.string().default(null)
     });
 
     const schema = Joi.object({
         _id: Joi.string().trim().required().error(new Error('id is required!')),
-        stadiums: Joi.array().items(stadiumSchema).default([]).required().error(new Error('stadiums data is required [Name, Address]!')),
+        stadiums: Joi.array().items(stadiumSchema).default([]).required().error(new Error('stadiums data is required [name, address]!')),
     });
 
     schema.validateAsync(req.body).then(result => {

@@ -219,7 +219,7 @@ export const createEvent = async (req: Request, res: Response) => {
             let title = `New event created`;
             const date = new Date(body.date);
             const formattedDate = date.toLocaleString('en-US', { month: 'short', day: '2-digit' });
-            let message = `Hello! We have an exciting new event coming up: ${body?.name} on ${formattedDate}. Don't miss out on this opportunity to make a difference. Apply now and be part of something meaningful. Thank you!`;
+            let message = `New event coming up: ${body?.name} on ${formattedDate}.`;
             const updatePromises = userData.map(async (data: any) => {
                 const tokens: string[] = data?.device_token;
                 const userTokenMapper = mapTokensToUser(data?._id, tokens);
@@ -298,7 +298,7 @@ export const deleteEvent = async (req: Request, res: Response) => {
     let user: any = req.header('user'), response: any
     try {
         let userAuthority = await getUser(user?._id, true);
-        if (userAuthority[0]?.userType != 1) {
+        if (userAuthority?.userType != 1) {
             throw new Error("You are not authorized to delete event.");
         }
         response = await eventModel.findOneAndUpdate({ _id: ObjectId(req.params.id), isActive: true, startTime: { $gte: new Date() } }, { isActive: false });
@@ -430,10 +430,8 @@ export const apply = async (req: Request, res: Response) => {
         if(result?.error){
             return res.status(409).json(new apiResponse(409, result.error, {}));
         }
-        // logger.info(result)
 
         response = await fetchAdminsAndSuperVolunteers(body?.workSpaceId)
-        // logger.info(response);
 
         if(response?.error){
             throw new Error(result.error);
@@ -443,16 +441,16 @@ export const apply = async (req: Request, res: Response) => {
             const userTokenMapper = mapTokensToUser(data?._id, tokens);
 
             const findUser = await userModel.findOne({ _id: ObjectId(user?._id)});
-            const date = new Date(body.date);
+            const date = new Date();
             const formattedDate = date.toLocaleString('en-US', { month: 'short', day: '2-digit' });
 
             const payload = {
-                title: `Apply on event`,
-                message: `Hello, ${findUser?.firstName} ${(findUser?.lastName)} has applied to this event name ${body.name} on ${formattedDate}. please approve or declined the user participation.`,
-                data: {
-                    type: 1,
-                    eventId: result?._clsid
-                }
+              title: `Applied for ${result.name}`,
+              message: `${findUser?.firstName} ${findUser?.lastName} (${findUser.volunteerId}), Applied ${result.name} event on ${formattedDate}.`,
+              data: {
+                type: 1,
+                eventId: result?._clsid,
+              },
             };
             sendNotification(tokens, userTokenMapper, payload);
         });
@@ -472,8 +470,8 @@ export const withdraw = async (req: Request, res: Response) => {
         if(result?.error){
             throw new Error(result.error);
         }
-        let userWorkSpace = getUser(user?._id, true);
-        response = await fetchAdminsAndSuperVolunteers(userWorkSpace[0]?.workSpaceId)
+        let userWorkSpace = await getUser(user?._id, true).then(data => data?.workSpaceId);
+        response = await fetchAdminsAndSuperVolunteers(userWorkSpace);
         if(response?.error) {
             throw new Error(result.error);
         }
@@ -482,16 +480,16 @@ export const withdraw = async (req: Request, res: Response) => {
             const userTokenMapper = mapTokensToUser(data?._id, tokens);
 
             const findUser = await userModel.findOne({ _id: ObjectId(user?._id)});
-            const date = new Date(body.date);
+            const date = new Date(new Date());
             const formattedDate = date.toLocaleString('en-US', { month: 'short', day: '2-digit' });
 
             const payload = {
-                title: `Apply on event`,
-                message: `Hello, ${findUser?.firstName} ${(findUser?.lastName)} has withdrawn from the ${body.name} event coducted on ${formattedDate}.`,
-                data: {
-                    type: 1,
-                    eventId: result?._id
-                }
+              title: `Withdrawn from ${result.name}`,
+              message: `${findUser?.firstName} ${findUser?.lastName} (${findUser?.volunteerId}), Withdrawn from ${result.name} event on ${formattedDate}.`,
+              data: {
+                type: 1,
+                eventId: result?._id,
+              },
             };
             sendNotification(tokens, userTokenMapper, payload);
         });
