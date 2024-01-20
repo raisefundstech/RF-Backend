@@ -43,7 +43,7 @@ export const getWorkSpace = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any
     try {
-        response = await workSpaceModel.find({ isActive: true }, { name: 1, address: 1 }).sort({ createdAt: -1 });
+        response = await workSpaceModel.find({ isActive: true }).sort({ createdAt: -1 });
 
         if (response) return res.status(200).json(new apiResponse(200, responseMessage.getDataSuccess('work space'), response))
         else return res.status(400).json(new apiResponse(400, responseMessage.getDataNotFound('work space'), {}))
@@ -155,13 +155,13 @@ export const addStadiumByWorkspace = async (req: Request, res: Response) => {
             return res.status(400).json(new apiResponse(400, responseMessage.updateDataError('Cant add more than one stadium at a time'), {}));
         }
 
-        if(user?.type != 1){
-            return res.status(400).json(new apiResponse(400, responseMessage?.deniedPermission, {}));
-        }
+        //if(user?.userType != 1){
+        //    return res.status(400).json(new apiResponse(400, responseMessage?.deniedPermission, {}));
+        //}
 
         // Check if there is an existing object with the same name and address
-        const stadiumName = body?.stadiums[0]?.Name;
-        const stadiumAddress = body?.stadiums[0]?.Address;
+        const stadiumName = body?.stadiums[0]?.name;
+        const stadiumAddress = body?.stadiums[0]?.address;
         logger.info("stadiumName"+" "+stadiumName+":::"+"stadiumAddress"+" "+stadiumAddress);
 
         const existingStadiumCheck: any= await workSpaceModel.aggregate([
@@ -176,7 +176,7 @@ export const addStadiumByWorkspace = async (req: Request, res: Response) => {
             },
             {
               $match: {
-                "stadiums.Name": {
+                "stadiums.name": {
                   $regex: new RegExp(`^${stadiumName}$`,'i') 
                 }
               }
