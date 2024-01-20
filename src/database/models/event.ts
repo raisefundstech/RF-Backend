@@ -6,6 +6,7 @@ const eventSchema: any = new mongoose.Schema({
     address: { type: String, default: null },
     latitude: { type: Number, default: 0.0 },
     longitude: { type: Number, default: 0.0 },
+    stadium_id: { type: mongoose.Schema.Types.ObjectId, default: null },
     date: { type: Date, default: null },
     startTime: { type: Date, default: null },
     endTime: { type: Date, default: null },
@@ -18,8 +19,8 @@ const eventSchema: any = new mongoose.Schema({
             requestStatus: { type: String, default: "PENDING", enum: ["PENDING", "APPROVED", "DECLINED"] },            
             attendance: { type: Boolean, default: false },
             appliedAt: { type: Date, default: new Date() },
-            checkedIn: { type: Boolean, default: false },
-            checkedOut: { type: Boolean, default: false },
+            checkedIn: { type: Date, default: null },
+            checkedOut: { type: Date, default: null },
             userNote: [{
                 note: { type: String },
                 createdAt: { type: Date, default: Date.now },

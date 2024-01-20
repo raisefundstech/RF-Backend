@@ -44,6 +44,12 @@ export const by_id = async (req: Request, res: Response, next: any) => {
     next()
 }
 
+export const fetch_stadium = async (req: Request, res: Response, next: any) => {
+    if(!isValidObjectId(req.params.id)) return res.status(400).json(new apiResponse(400, responseMessage.invalidId('id'), {}));
+    if(!isValidObjectId(req.query.stadiumId)) return res.status(400).json(new apiResponse(400, responseMessage.invalidId('stadiumId'), {}));
+    next()
+}
+
 export const add_stadiums = async (req: Request, res: Response, next: any) => {
     const stadiumSchema = Joi.object({
         Name: Joi.string().required(),
