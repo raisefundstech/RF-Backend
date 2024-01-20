@@ -1,6 +1,5 @@
-import { eventModel,userModel } from "../database";
+import { eventModel,userModel, workSpaceModel } from "../database";
 import { logger } from "./winston_logger";
-
 const ObjectId = require('mongoose').Types.ObjectId
 
 async function volunteerInfoByEvent (req: any, user: any): Promise<any> {
@@ -453,6 +452,38 @@ async function getStadiumDetails(eventId: string) {
     }
 }
 
+
+async function addStadiumDetails(eventsPayload: any) {
+    try {
+        let idx = 0;
+        const result = await Promise.all(eventsPayload.map(async (event: any) => {
+            let response = await workSpaceModel.findOne(
+                { 
+                    _id: ObjectId(event.workSpaceId), 
+                    isActive: true, 
+                    stadiums: { $elemMatch: { _id: ObjectId(event.stadiumId) } }
+                },
+                { 'stadiums.$': 1 } 
+            );
+            if (response) {
+                const stadium = response.stadiums[0];
+                const { name, address, latitude, longitude, stadiumPolicy } = stadium;
+                event.name = name; 
+                event.address = address; 
+                event.latitude = latitude; 
+                event.longitude = longitude; 
+                event.stadiumPolicy = stadiumPolicy; 
+            }
+            eventsPayload[idx] = event;
+            idx++;
+            return event;
+        }));
+        return eventsPayload;
+    } catch (error) {
+        throw error;
+    }
+}
+
 export {
     volunteerInfoByEvent,
     applyOnEvent,
@@ -464,5 +495,6 @@ export {
     updateVolunteersCheckOutStatus,
     checkEventCreationTime,
     userUpdated,
-    getStadiumDetails
+    getStadiumDetails,
+    addStadiumDetails
 };

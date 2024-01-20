@@ -14,7 +14,8 @@ import {
     updateVolunteersCheckOutStatus, 
     checkEventCreationTime, 
     userUpdated, 
-    getStadiumDetails
+    getStadiumDetails,
+    addStadiumDetails
 } from '../../helpers/eventQueries';
 import { eventModel, roomModel, userModel } from '../../database'
 import { getUser } from '../../helpers/userQueries'
@@ -92,11 +93,12 @@ export const getMyEvents = async (req: Request, res: Response) => {
               },
             },
         ]);
+        let stadiumResponse: any = await addStadiumDetails(response);
         // logger.info(response);
-        if (response?.length > 0) return res.status(200).json(new apiResponse(200, responseMessage.getDataSuccess('events'), response))
+        if (response?.length > 0) return res.status(200).json(new apiResponse(200, responseMessage.getDataSuccess('events'), stadiumResponse))
         else return res.status(404).json(new apiResponse(404, responseMessage.getDataNotFound('events'), {}))
     } catch (error) {
-        return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, error));
+        return res.status(500).json(new apiResponse(500, responseMessage?.customMessage(error), error));
     }
 }
 
@@ -168,8 +170,9 @@ export const getEvents = async (req: Request, res: Response) => {
                 }
             }
         ]);
+        let stadiumResponse: any = await addStadiumDetails(response);
         if (response?.length > 0) {
-            return res.status(200).json(new apiResponse(200, responseMessage.getDataSuccess('events'), response));
+            return res.status(200).json(new apiResponse(200, responseMessage.getDataSuccess('events'), stadiumResponse));
         } else {
             return res.status(404).json(new apiResponse(404, responseMessage.getDataNotFound('events'), {}));
         }
