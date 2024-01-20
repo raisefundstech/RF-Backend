@@ -4,9 +4,19 @@ import { apiResponse } from '../../common'
 import { Request, Response } from 'express'
 import { responseMessage } from '../../helpers'
 import { 
-    volunteerInfoByEvent, applyOnEvent, withdrawFromEvent, getEventInfo, fetchAdminsAndSuperVolunteers, updateVolunteersRequestStatus,
-    updateVolunteersCheckInStatus, updateVolunteersCheckOutStatus, checkEventCreationTime, userUpdated
-} from '../../helpers/eventQueries'
+    volunteerInfoByEvent, 
+    applyOnEvent, 
+    withdrawFromEvent, 
+    getEventInfo, 
+    fetchAdminsAndSuperVolunteers, 
+    updateVolunteersRequestStatus,
+    updateVolunteersCheckInStatus, 
+    updateVolunteersCheckOutStatus, 
+    checkEventCreationTime, 
+    userUpdated, 
+    getStadiumDetails,
+    addStadiumDetails
+} from '../../helpers/eventQueries';
 import { eventModel, roomModel, userModel } from '../../database'
 import { getUser } from '../../helpers/userQueries'
 import { pushUserEventRecord } from '../../helpers/statsQueries'
@@ -25,84 +35,86 @@ export const getMyEvents = async (req: Request, res: Response) => {
     try {
         console.log(user)
         response = await eventModel.aggregate([
-          {
-            $match: {
-              volunteerRequest: {
-                $elemMatch: { volunteerId: ObjectId(user._id) },
+            {
+              $match: {
+                volunteerRequest: {
+                  $elemMatch: { volunteerId: ObjectId(user._id) },
+                },
+                isActive: true,
               },
-              isActive: true,
             },
-          },
-          { $sort: { startTime: -1 } },
-          {
-            $project: {
-              workSpaceId: 1,
-              name: 1,
-              address: 1,
-              date: 1,
-              startTime: 1,
-              endTime: 1,
-              volunteerSize: 1,
-              notes: 1,
-              isActive: 1,
-              rfCoins: 1,
-              requestStatus: {
-                $let: {
-                  vars: {
-                    requestStatuses: {
-                      $map: {
-                        input: {
-                          $filter: {
-                            input: "$volunteerRequest",
-                            as: "volunteer",
-                            cond: {
-                              $eq: [
-                                "$$volunteer.volunteerId",
-                                ObjectId(user._id),
-                              ],
+            { $sort: { startTime: -1 } },
+            {
+              $project: {
+                workSpaceId: 1,
+                stadiumId: 1,
+                date: 1,
+                startTime: 1,
+                endTime: 1,
+                volunteerSize: 1,
+                notes: 1,
+                isActive: 1,
+                rfCoins: 1,
+                requestStatus: {
+                  $let: {
+                    vars: {
+                      requestStatuses: {
+                        $map: {
+                          input: {
+                            $filter: {
+                              input: "$volunteerRequest",
+                              as: "volunteer",
+                              cond: {
+                                $eq: [
+                                  "$$volunteer.volunteerId",
+                                  ObjectId(user._id),
+                                ],
+                              },
                             },
                           },
+                          as: "volunteer",
+                          in: "$$volunteer.requestStatus",
                         },
-                        as: "volunteer",
-                        in: "$$volunteer.requestStatus",
                       },
                     },
-                  },
-                  in: {
-                    $cond: {
-                      if: { $eq: [{ $size: "$$requestStatuses" }, 1] },
-                      then: { $arrayElemAt: ["$$requestStatuses", 0] },
-                      else: "$$requestStatuses",
+                    in: {
+                      $cond: {
+                        if: { $eq: [{ $size: "$$requestStatuses" }, 1] },
+                        then: { $arrayElemAt: ["$$requestStatuses", 0] },
+                        else: "$$requestStatuses",
+                      },
                     },
                   },
                 },
               },
             },
-          },
-          {
-            $sort: {
-              createdAt: -1,
+            {
+              $sort: {
+                createdAt: -1,
+              },
             },
-          },
         ]);
-        if (response?.length > 0) return res.status(200).json(new apiResponse(200, responseMessage.getDataSuccess('events'), response))
+        let stadiumResponse: any = await addStadiumDetails(response);
+        // logger.info(response);
+        if (response?.length > 0) return res.status(200).json(new apiResponse(200, responseMessage.getDataSuccess('events'), stadiumResponse))
         else return res.status(404).json(new apiResponse(404, responseMessage.getDataNotFound('events'), {}))
     } catch (error) {
-        return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, error));
+        return res.status(500).json(new apiResponse(500, responseMessage?.customMessage(error), error));
     }
 }
 
 // Fetch all the events based on the workspace provided 
 export const getEvents = async (req: Request, res: Response) => {
-
-    reqInfo(req)
-    let user: any = req.header('user'), response: any
-
+    reqInfo(req);
+    let user: any = req.header('user');
+    let response: any;
     // Allow Admins and super volunteers to view events across all workspaces and volunteers to view events in their workspace
     let userWorkSpace = await userModel.findOne({ _id: ObjectId(user._id) }, { workSpaceId: 1, userType: 1 });
     let workSpaceId = userWorkSpace?.workSpaceId.toString();
 
-    if(workSpaceId == null) return res.status(400).json(new apiResponse(400, "Please provide a valid workspaceid and try again", {}))
+    if (workSpaceId == null) {
+        return res.status(400).json(new apiResponse(400, "Please provide a valid workspaceid and try again", {}));
+    }
 
     try {
         response = await eventModel.aggregate([
@@ -111,9 +123,8 @@ export const getEvents = async (req: Request, res: Response) => {
             {
                 $project: {
                     workSpaceId: 1,
-                    name: 1,
-                    address: 1,
                     date: 1,
+                    stadiumId: 1,
                     startTime: 1,
                     endTime: 1,
                     volunteerSize: 1,
@@ -160,11 +171,13 @@ export const getEvents = async (req: Request, res: Response) => {
                 }
             }
         ]);
-        // console.timeEnd('mongoconntime');
-        if (response?.length > 0) return res.status(200).json(new apiResponse(200, responseMessage.getDataSuccess('events'), response))
-        else return res.status(404).json(new apiResponse(404, responseMessage.getDataNotFound('events'), {}))
+        let stadiumResponse: any = await addStadiumDetails(response);
+        if (response?.length > 0) {
+            return res.status(200).json(new apiResponse(200, responseMessage.getDataSuccess('events'), stadiumResponse));
+        } else {
+            return res.status(404).json(new apiResponse(404, responseMessage.getDataNotFound('events'), {}));
+        }
     } catch (error) {
-        // console.log(error);
         return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, error));
     }
 }
@@ -178,7 +191,7 @@ export const createEvent = async (req: Request, res: Response) => {
         let userInfo = await getUser(user?._id, true);
         logger.info(userInfo?.length);
 
-        if(userInfo[0]?.userType != 1) {
+        if(userInfo?.userType != 1) { 
             return res.status(400).json(new apiResponse(400, "You are not authorized to create event.", {}));
         }
 
@@ -190,10 +203,14 @@ export const createEvent = async (req: Request, res: Response) => {
         
         if (body.volunteerSize < 2) return res.status(400).json(new apiResponse(400, "Please add volunteer size more than 1 . ", {}))
 
-        let validWorkSpace = await workSpaceModel.findOne({ _id: ObjectId(body?.workSpaceId), isActive: true });
+        let validWorkSpace = await workSpaceModel.findOne({ 
+            _id: ObjectId(body?.workSpaceId), 
+            stadiums: { $elemMatch: { _id: ObjectId(body?.stadiumId) } },
+            isActive: true
+        });
 
         if(validWorkSpace == null) {
-            return res.status(400).json(new apiResponse(400, "Invalid workspace id. Please provide valid workspace id.", {}));
+            return res.status(400).json(new apiResponse(400, "Invalid workspace or stadium ID provided. Please provide valid IDs.", {}));
         }
 
         response = await new eventModel(body).save();
@@ -263,6 +280,12 @@ export const getEventById = async (req: Request, res: Response) => {
     try {
         const pipeline = await volunteerInfoByEvent(req, user);
         response = await eventModel.aggregate(pipeline);
+        const stadiumInfo: any = await getStadiumDetails(req?.params?.id);
+        response[0].name = stadiumInfo?.[0]?.name;
+        response[0].address = stadiumInfo?.[0]?.address;
+        response[0].stadiumPolicy = stadiumInfo?.[0]?.stadiumPolicy;
+        response[0].latitude = stadiumInfo?.[0]?.latitude;
+        response[0].longitude = stadiumInfo?.[0]?.longitude;
         // If the userStatus represent the user is a volunteer delete the volunteerRequest from the response
         if(userStatus?.userType === 0){
             response[0].volunteerRequest = response[0]?.volunteerRequest.filter((data: any) => data?.volunteerId?.toString() === user?._id?.toString());
@@ -757,7 +780,7 @@ export const volunteerCheckIn = async (req: Request, res: Response) => {
 
         // Check request status
         var requestStatus = req.body?.volunteerRequest;
-        if (requestStatus == null || requestStatus.length === 0 || body?.startTime == null) {
+        if (requestStatus == null || requestStatus.length === 0) {
             return res.status(400).json(new apiResponse(400, "Invalid request. Please provide VolunteerRequest data.", {}));
         }
 
@@ -812,6 +835,7 @@ export const volunteerCheckOut = async (req: Request, res: Response) => {
         if (requestStatus == null || requestStatus.length === 0) {
             return res.status(400).json(new apiResponse(400, "Invalid request. Please provide VolunteerRequest data.", {}));
         }
+        // check if the volunteer has checked-in first
 
         // Check check-out time, admin can mark attendance 2 hours before the event or 2 hour after the event
         // currently suspending the check-out time validation
@@ -844,10 +868,11 @@ export const volunteerCheckOut = async (req: Request, res: Response) => {
             // update user attended stats information into stats table
             let userEventData = {
                 "volunteerId": data?.volunteerId,
-                "rfCoins": data?.rfCoins,
-                "eventId" : data?._id,
-                "workSpaceId" : user?.workSpaceId
+                "rfCoins": eventInfo?.rfCoins,
+                "eventId" : eventInfo?._id,
+                "workSpaceId" : eventInfo?.workSpaceId
             }
+
             response = await pushUserEventRecord(userEventData);
 
             if (response?.error) {

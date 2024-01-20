@@ -6,7 +6,8 @@ const statsSchema: any = new mongoose.Schema({
     eventInformation: {
         type: [{
             eventId: { type: mongoose.Schema.Types.ObjectId },
-            rfCoins : { type: Number, default: 0 }
+            rfCoins : { type: Number, default: 0 },
+            createdAt: { type: Date, default: Date.now }
         }], default: []
     }
 }, { timestamps: true });
