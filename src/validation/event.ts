@@ -7,10 +7,7 @@ import { responseMessage } from '../helpers';
 export const createEvent = async (req: Request, res: Response, next: any) => {
     const schema = Joi.object({
         workSpaceId: Joi.string().trim().required().error(new Error('workSpaceId is required!')),
-        name: Joi.string().trim().required().error(new Error('name is required!')),
-        address: Joi.string().trim().required().error(new Error('address is required!')),
-        latitude: Joi.number().allow(null).error(new Error('latitude is number!')),
-        longitude: Joi.number().allow(null).error(new Error('longitude is number!')),
+        stadiumId: Joi.string().trim().required().error(new Error('stadiumId is objectId!')),
         date: Joi.string().required().error(new Error('date is required!')),
         startTime: Joi.string().required().error(new Error('startTime is required!')),
         endTime: Joi.string().required().error(new Error('endTime is required!')),
@@ -31,10 +28,6 @@ export const updateEvent = async (req: Request, res: Response, next: any) => {
     const schema = Joi.object({
         _id: Joi.string().trim().required().error(new Error('event id is required!')),
         workSpaceId: Joi.string().trim().allow(null, "").error(new Error('workSpaceId is objectId!')),
-        name: Joi.string().trim().allow(null, "").error(new Error('name is string!')),
-        address: Joi.string().trim().allow(null, "").error(new Error('address is string!')),
-        latitude: Joi.number().allow(null).error(new Error('latitude is number!')),
-        longitude: Joi.number().allow(null).error(new Error('longitude is number!')),
         date: Joi.string().trim().allow(null, "").error(new Error('date is string!')),
         startTime: Joi.string().trim().allow(null, "").error(new Error('startTime is string!')),
         endTime: Joi.string().trim().allow(null, "").error(new Error('endTime is string!')),

@@ -1,6 +1,5 @@
-import { eventModel,userModel } from "../database";
+import { eventModel,userModel, workSpaceModel } from "../database";
 import { logger } from "./winston_logger";
-
 const ObjectId = require('mongoose').Types.ObjectId
 
 async function volunteerInfoByEvent (req: any, user: any): Promise<any> {
@@ -46,7 +45,6 @@ async function volunteerInfoByEvent (req: any, user: any): Promise<any> {
                     appliedAt: "$$volReq.appliedAt",
                     checkedIn: "$$volReq.checkedIn",
                     checkedOut: "$$volReq.checkedOut",
-                    userNote: "$$volReq.userNote",
                     userDetails: {
                     $let: {
                         vars: {
@@ -278,7 +276,7 @@ async function updateVolunteersCheckInStatus(eventId: string, volunteerId: strin
             },
             {
                 $set: {
-                    "volunteerRequest.$.checkedIn": true,
+                    "volunteerRequest.$.checkedIn": new Date(),
                 },
             },
             { new: true }
@@ -298,6 +296,19 @@ async function updateVolunteersCheckInStatus(eventId: string, volunteerId: strin
 
 async function updateVolunteersCheckOutStatus(eventId: string, volunteerId: string): Promise<any> {
     try {
+        // check if volunteer has checked-in
+        const event = await eventModel.findOne({
+            _id: ObjectId(eventId),
+            isActive: true,
+            "volunteerRequest.volunteerId": ObjectId(volunteerId),
+            "volunteerRequest.checkedIn": { $ne: null },
+        });
+        
+        if (!event) {
+            logger.error("Volunteer has not checked-in yet.");
+            throw new Error("Volunteer has not checked-in yet.");
+        }
+
         const response = await eventModel.findOneAndUpdate(
             {
                 _id: ObjectId(eventId),
@@ -306,7 +317,7 @@ async function updateVolunteersCheckOutStatus(eventId: string, volunteerId: stri
             },
             {
                 $set: {
-                    "volunteerRequest.$.checkedOut": true,
+                    "volunteerRequest.$.checkedOut": new Date(),
                     "volunteerRequest.$.attendance": true,
                 },
             },
@@ -314,13 +325,13 @@ async function updateVolunteersCheckOutStatus(eventId: string, volunteerId: stri
         );
         if (!response) {
             // logger.error("Document not found or criteria did not match.");
-            throw new Error("Document not found or criteria did not match.");
+            throw new Error(`Invalid volunteerId ${volunteerId}, please correct the VolunteerId and try again`);
         }
         logger.info("Volunteer checkout request updated successfully :", volunteerId,"\t",response?.volunteerRequest?.requestStatus);
         return response;
     } catch (error) {
-        logger.error(`Invalid volunteerId ${volunteerId}, please correct the volunteerId and try again`);
-        return { error: `Invalid volunteerId ${volunteerId}, please correct the VolunteerId and try again`};
+        logger.error(`${error.message}`);
+        return { error: `${error.message}`};
     }
 }
 
@@ -375,6 +386,104 @@ async function userUpdated(eventId: string, userId: string){
     }
 }
 
+async function getStadiumDetails(eventId: string) {
+    try {
+        const eventStadiumInfo = await eventModel.aggregate([
+            {
+                $match: {
+                    "_id": ObjectId(eventId) // Replace with your event ID
+                }
+            },
+            {
+                $lookup: {
+                    from: "workspaces",
+                    localField: "workSpaceId",
+                    foreignField: "_id",
+                    as: "workspace"
+                }
+            },
+            {
+                $unwind: "$workspace"
+            },
+            {
+                $project: {
+                    _id: 1,
+                    date: 1,
+                    stadiumId: 1,
+                    startTime: 1,
+                    endTime: 1,
+                    volunteerRequest: 1,
+                    createdAt: 1,
+                    updatedAt: 1,
+                    createdBy: 1,
+                    updatedBy: 1,
+                    volunteerSize: 1,
+                    rfCoins: 1,
+                    notes: 1,
+                    workspaceId: "$workspace._id",
+                    stadium: {
+                        $filter: {
+                            input: "$workspace.stadiums",
+                            as: "stadium",
+                            cond: {
+                                $eq: ["$$stadium._id", "$stadiumId"]
+                            }
+                        }
+                    }
+                }
+            },
+            {
+                $unwind: "$stadium"
+            },
+            {
+                $project: {
+                    _id: 1,
+                    name: "$stadium.name",
+                    address: "$stadium.address",
+                    stadiumPolicy: "$stadium.stadiumPolicy",
+                    latitude: "$stadium.latitude",
+                    longitude: "$stadium.longitude"
+                }
+            }
+        ]);
+        return eventStadiumInfo;
+    } catch (error) {
+        throw error;
+    }
+}
+
+
+async function addStadiumDetails(eventsPayload: any) {
+    try {
+        let idx = 0;
+        const result = await Promise.all(eventsPayload.map(async (event: any) => {
+            let response = await workSpaceModel.findOne(
+                { 
+                    _id: ObjectId(event.workSpaceId), 
+                    isActive: true, 
+                    stadiums: { $elemMatch: { _id: ObjectId(event.stadiumId) } }
+                },
+                { 'stadiums.$': 1 } 
+            );
+            if (response) {
+                const stadium = response.stadiums[0];
+                const { name, address, latitude, longitude, stadiumPolicy } = stadium;
+                event.name = name; 
+                event.address = address; 
+                event.latitude = latitude; 
+                event.longitude = longitude; 
+                event.stadiumPolicy = stadiumPolicy; 
+            }
+            eventsPayload[idx] = event;
+            idx++;
+            return event;
+        }));
+        return eventsPayload;
+    } catch (error) {
+        throw error;
+    }
+}
+
 export {
     volunteerInfoByEvent,
     applyOnEvent,
@@ -385,5 +494,7 @@ export {
     updateVolunteersCheckInStatus,
     updateVolunteersCheckOutStatus,
     checkEventCreationTime,
-    userUpdated
+    userUpdated,
+    getStadiumDetails,
+    addStadiumDetails
 };

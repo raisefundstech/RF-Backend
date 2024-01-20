@@ -12,7 +12,6 @@ const workSpaceSchema: any = new mongoose.Schema({
         type: [{
             name: {type: String, default: null},
             address: {type: String, default: null},
-            timeZone : {type: String, default: null},
             latitude: {type: Number, default: 0.0},
             longitude: {type: Number, default: 0.0},
             stadiumPolicy: {type: String, default: null}

@@ -145,6 +145,7 @@ export const otpVerification = async (req: Request, res: Response) => {
             await new userSessionModel({
                 createdBy: response._id,
                 token: token,
+                device_token: body?.device_token,
                 refresh_token
             }).save();
 
