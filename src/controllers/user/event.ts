@@ -197,12 +197,13 @@ export const createEvent = async (req: Request, res: Response) => {
         }
 
         response = await new eventModel(body).save();
+
         if (response) {
             let userData = await userModel.find({ userType: 0, isActive: true, workSpaceId: response?.workSpaceId }, { firstName: 1, lastName: 1, device_token: 1 });
             logger.info(userData?.length);
             let title = `New event created`;
             const date = new Date(body.date);
-            const eventDetails = await getStadiumDetailsByWorkSpace(response?._id, response?.stadiumId);
+            const eventDetails = await getStadiumDetailsByWorkSpace(response?.workSpaceId, response?.stadiumId);
             const formattedDate = date.toLocaleString('en-US', { month: 'short', day: '2-digit' });
             let message = `New event coming up: ${eventDetails?.name} on ${formattedDate}.`;
             logger.info(message);
@@ -413,7 +414,8 @@ export const apply = async (req: Request, res: Response) => {
 
         response = await fetchAdminsAndSuperVolunteers(body?.workSpaceId)
         var getEvent = await eventModel.findOne({ _id: ObjectId(body._id), isActive: true })
-
+        const eventDetails = await getStadiumDetailsByWorkSpace(getEvent?.workSpaceId, getEvent?.stadiumId);
+        
         if(response?.error){
             throw new Error(result.error);
         }
@@ -424,7 +426,6 @@ export const apply = async (req: Request, res: Response) => {
             const findUser = await userModel.findOne({ _id: ObjectId(user?._id)});
             const date = new Date();
             const formattedDate = date.toLocaleString('en-US', { month: 'short', day: '2-digit' });
-            const eventDetails = await getStadiumDetailsByWorkSpace(getEvent?._id, getEvent?.stadiumId);
 
             const payload = {
               title: `Applied for ${result.name}`,
@@ -455,6 +456,7 @@ export const withdraw = async (req: Request, res: Response) => {
         }
         let userWorkSpace = await getUser(user?._id, true).then(data => data?.workSpaceId);
         var getEvent = await eventModel.findOne({ _id: ObjectId(req?.params?.id), isActive: true })
+        const eventDetails = await getStadiumDetailsByWorkSpace(getEvent?.workSpaceId, getEvent?.stadiumId);
 
         response = await fetchAdminsAndSuperVolunteers(userWorkSpace);
         if(response?.error) {
@@ -470,7 +472,7 @@ export const withdraw = async (req: Request, res: Response) => {
 
             const payload = {
               title: `Withdrawn from ${result.name}`,
-              message: `${findUser?.firstName} ${findUser?.lastName} (${findUser?.volunteerId}), Withdrawn from ${getEvent?.name} event on ${formattedDate}.`,
+              message: `${findUser?.firstName} ${findUser?.lastName} (${findUser?.volunteerId}), Withdrawn from ${eventDetails?.name} event on ${formattedDate}.`,
               data: {
                 type: 1,
                 eventId: result?._id,
@@ -507,7 +509,7 @@ export const updateVolunteers = async (req: Request, res: Response) => {
 
         var getEvent = await eventModel.findOne({ _id: ObjectId(body._id), isActive: true })
         logger.info(getEvent?._id);
-        const eventDetails = await getStadiumDetailsByWorkSpace(getEvent?._id, getEvent?.stadiumId);
+        const eventDetails = await getStadiumDetailsByWorkSpace(getEvent?.workSpaceId, getEvent?.stadiumId);
 
         if (getEvent == null) {
             return res.status(400).json(new apiResponse(400, "Invalid event id. Please provide valid event id.", {}));
@@ -827,7 +829,7 @@ export const volunteerCheckOut = async (req: Request, res: Response) => {
 
         // fetch event information
         const eventInfo = await eventModel.findOne({ _id: ObjectId(body?._id), isActive: true });
-        const stadiumInfo = await getStadiumDetailsByWorkSpace(eventInfo?._id, eventInfo?.stadiumId);
+        const stadiumInfo = await getStadiumDetailsByWorkSpace(eventInfo?.workSpaceId, eventInfo?.stadiumId);
 
         // Update check-in status for each volunteer
         const volunteersCheckOutStatus = body?.volunteerRequest.map(async (data: any) => {
