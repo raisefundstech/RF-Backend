@@ -46,6 +46,7 @@ export const getMyEvents = async (req: Request, res: Response) => {
             { $sort: { startTime: -1 } },
             {
               $project: {
+                name: 1,
                 workSpaceId: 1,
                 stadiumId: 1,
                 date: 1,
