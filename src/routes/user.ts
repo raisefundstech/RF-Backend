@@ -61,8 +61,8 @@ router.post('/volunteer/add', userValidation.userSignUp, userController.addVolun
 router.get('/unverified/volunteers', userValidation.checkWorkSpaceId, userController.getUnverifiedVolunteers)
 
 //  -------  Attendance  --------
-router.patch('/attendance/checkin', eventValidation.updateEvent, userController.volunteerCheckIn)
-router.patch('/attendance/checkout', eventValidation.updateEvent, userController.volunteerCheckOut)
+router.patch('/attendance/checkin', eventValidation.checkInOutEvent, userController.volunteerCheckIn)
+router.patch('/attendance/checkout', eventValidation.checkInOutEvent, userController.volunteerCheckOut)
 
 //  -------  Meet Our Team  --------
 router.get('/meetOurTeams', userController.getOurTeam)

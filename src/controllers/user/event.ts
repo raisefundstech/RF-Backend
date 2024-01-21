@@ -122,6 +122,7 @@ export const getEvents = async (req: Request, res: Response) => {
             { $sort: { startTime: -1 } },
             {
                 $project: {
+                    name: 1,
                     workSpaceId: 1,
                     date: 1,
                     stadiumId: 1,
@@ -281,8 +282,8 @@ export const getEventById = async (req: Request, res: Response) => {
         const pipeline = await volunteerInfoByEvent(req, user);
         response = await eventModel.aggregate(pipeline);
         const stadiumInfo: any = await getStadiumDetails(req?.params?.id);
-        response[0].name = stadiumInfo?.[0]?.name;
-        response[0].address = stadiumInfo?.[0]?.address;
+        response[0].stadiumName = stadiumInfo?.[0]?.name;
+        response[0].stadiumAddress = stadiumInfo?.[0]?.address;
         response[0].stadiumPolicy = stadiumInfo?.[0]?.stadiumPolicy;
         response[0].latitude = stadiumInfo?.[0]?.latitude;
         response[0].longitude = stadiumInfo?.[0]?.longitude;

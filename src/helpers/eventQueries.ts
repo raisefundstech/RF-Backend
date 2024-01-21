@@ -468,8 +468,8 @@ async function addStadiumDetails(eventsPayload: any) {
             if (response) {
                 const stadium = response.stadiums[0];
                 const { name, address, latitude, longitude, stadiumPolicy } = stadium;
-                event.name = name; 
-                event.address = address; 
+                event.stadiumName = name; 
+                event.stadiumAddress = address; 
                 event.latitude = latitude; 
                 event.longitude = longitude; 
                 event.stadiumPolicy = stadiumPolicy; 

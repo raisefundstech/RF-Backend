@@ -6,6 +6,7 @@ import { responseMessage } from '../helpers';
 
 export const createEvent = async (req: Request, res: Response, next: any) => {
     const schema = Joi.object({
+        name: Joi.string().trim().required().error(new Error('name is required!')),
         workSpaceId: Joi.string().trim().required().error(new Error('workSpaceId is required!')),
         stadiumId: Joi.string().trim().required().error(new Error('stadiumId is objectId!')),
         date: Joi.string().required().error(new Error('date is required!')),
@@ -27,6 +28,8 @@ export const createEvent = async (req: Request, res: Response, next: any) => {
 export const updateEvent = async (req: Request, res: Response, next: any) => {
     const schema = Joi.object({
         _id: Joi.string().trim().required().error(new Error('event id is required!')),
+        name: Joi.string().trim().allow(null, "").error(new Error('name is string!')),
+        stadiumId: Joi.string().trim().allow(null, "").error(new Error('stadiumId is objectId!')),
         workSpaceId: Joi.string().trim().allow(null, "").error(new Error('workSpaceId is objectId!')),
         date: Joi.string().trim().allow(null, "").error(new Error('date is string!')),
         startTime: Joi.string().trim().allow(null, "").error(new Error('startTime is string!')),
@@ -35,6 +38,20 @@ export const updateEvent = async (req: Request, res: Response, next: any) => {
         notes: Joi.string().trim().allow(null, "").error(new Error('notes is string!')),
         rfCoins: Joi.number().allow(null,"").error(new Error('rfCoins is number!')),
         volunteerRequest: Joi.array().allow(null,"").default([]).error(new Error('volunteerRequest is array!')),
+    });
+    schema.validateAsync(req.body).then(result => {
+        if (!isValidObjectId(result._id)) return res.status(400).json(new apiResponse(400, 'invalid id', {}));
+        req.body = result;
+        return next()
+    }).catch(error => {
+        res.status(400).json(new apiResponse(400, error.message, {}))
+    })
+}
+
+export const checkInOutEvent = async (req: Request, res: Response, next: any) => {
+    const schema = Joi.object({
+        _id: Joi.string().trim().required().error(new Error('event id is required!')),
+        volunteerRequest: Joi.array().required().default([]).error(new Error('volunteerRequest is array!')),
     });
     schema.validateAsync(req.body).then(result => {
         if (!isValidObjectId(result._id)) return res.status(400).json(new apiResponse(400, 'invalid id', {}));
