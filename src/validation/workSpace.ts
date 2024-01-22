@@ -71,3 +71,24 @@ export const add_stadiums = async (req: Request, res: Response, next: any) => {
         res.status(400).json(new apiResponse(400, error.message, {}))
     })
 }
+
+
+export const updateStadium = async (req: Request, res: Response, next: any) => {
+
+    const schema = Joi.object({
+        _id: Joi.string().trim().required().error(new Error('id is required!')),
+        stadiumId: Joi.string().trim().required().error(new Error('stadiumId is required!')),
+        name: Joi.string().required(),
+        address: Joi.string().required(),
+        latitude: Joi.number().default(0.0),
+        longitude: Joi.number().default(0.0),
+        stadiumPolicy: Joi.string().default("")
+    });
+
+    schema.validateAsync(req.body).then(result => {
+        req.body = result;
+        return next()
+    }).catch(error => {
+        res.status(400).json(new apiResponse(400, error.message, {}))
+    })
+}

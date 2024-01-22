@@ -241,3 +241,44 @@ export const getStadiumDetailsByWorkSpace = async (req: Request, res: Response) 
         return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, error));
     }
 }
+
+export const updateStadiumByWorkSpace = async (req: Request, res: Response) => {
+    reqInfo(req)
+    let user: any = req.header('user'), response: any, body = req.body;
+    logger.info("logging info"+" "+body)
+    try {
+        response = await workSpaceModel.findOneAndUpdate(
+            { 
+                _id: ObjectId(body?._id), 
+                isActive: true, 
+                stadiums: { $elemMatch: { _id: ObjectId(body?.stadiumId) } }
+            },
+            { 
+                $set: {
+                    'stadiums.$.name': body?.name,
+                    'stadiums.$.address': body?.address,
+                    'stadiums.$.latitude': body?.latitude,
+                    'stadiums.$.longitude': body?.longitude,
+                    'stadiums.$.stadiumPolicy': body?.stadiumPolicy
+                }
+            },
+            { new: true }
+        );
+        if (response) {
+            const stadium = response.stadiums[0];
+            const { name, address, latitude, longitude, stadiumPolicy } = stadium;
+            return res.status(200).json({
+                _id: response._id,
+                name,
+                address,
+                latitude,
+                longitude,
+                stadiumPolicy
+            });
+        } else {
+            return res.status(400).json(new apiResponse(400, responseMessage.getDataNotFound('stadium'), {}));
+        }
+    } catch (error) {
+        return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, error));
+    }
+}

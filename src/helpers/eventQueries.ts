@@ -25,6 +25,7 @@ async function volunteerInfoByEvent (req: any, user: any): Promise<any> {
             address: 1,
             latitude: 1,
             longitude: 1,
+            stadiumId: 1,
             date: 1,
             startTime: 1,
             endTime: 1,

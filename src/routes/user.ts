@@ -37,6 +37,7 @@ router.get('/workSpace/volunteer/:id', workSpaceValidation.by_id, userController
 router.get('/workSpaces/manager', userController.getWorkSpaceByManager)
 router.get('/workSpace/stadiums/:id', workSpaceValidation.fetch_stadium, userController.getStadiumDetailsByWorkSpace)
 router.post('/workSpace/stadiums/add', workSpaceValidation.add_stadiums, userController.addStadiumByWorkspace)
+router.put('/workSpace/stadiums/update', workSpaceValidation.updateStadium, userController.updateStadiumByWorkSpace)
 
 //  ------  Event Routes  ------
 router.get('/myevents', userController.getMyEvents)
