@@ -36,8 +36,7 @@ export const updateEvent = async (req: Request, res: Response, next: any) => {
         endTime: Joi.string().trim().allow(null, "").error(new Error('endTime is string!')),
         volunteerSize: Joi.number().allow(null).error(new Error('volunteerSize is number!')),
         notes: Joi.string().trim().allow(null, "").error(new Error('notes is string!')),
-        rfCoins: Joi.number().allow(null,"").error(new Error('rfCoins is number!')),
-        volunteerRequest: Joi.array().allow(null,"").default([]).error(new Error('volunteerRequest is array!')),
+        rfCoins: Joi.number().allow(null,"").error(new Error('rfCoins is number!'))
     });
     schema.validateAsync(req.body).then(result => {
         if (!isValidObjectId(result._id)) return res.status(400).json(new apiResponse(400, 'invalid id', {}));

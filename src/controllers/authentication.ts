@@ -26,6 +26,21 @@ export const userSignUp = async (req: Request, res: Response) => {
         
         body.volunteerId = await generateVolunteerCode();
 
+        let checkUserExists: any = await userModel.findOne({ mobileNumber: body.mobileNumber, isActive: false })
+
+        if (checkUserExists) {
+            body.isActive = true
+            body.otp = null
+            body.otpExpireTime = null
+            body.device_token = []
+            let response = await userModel.findOneAndUpdate({ mobileNumber: body.mobileNumber }, body, { new: true })
+            if (response) {
+                return res.status(200).json(new apiResponse(200, responseMessage?.signupSuccess, {}))
+            } else {
+                return res.status(501).json(new apiResponse(501, "Something went wrong", {response}))
+            }
+        }
+
         let response = await new userModel(body).save();
 
         if (response) {

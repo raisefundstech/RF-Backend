@@ -1,10 +1,11 @@
-import { reqInfo } from '../../helpers/winston_logger'
-import { apiResponse, userStatus } from '../../common'
+import { reqInfo,logger } from '../../helpers/winston_logger'
+import { apiResponse } from '../../common'
 import { Request, Response } from 'express'
 import { responseMessage } from '../../helpers'
-import { userModel, userSessionModel, workSpaceModel } from '../../database'
+import { userModel, workSpaceModel } from '../../database'
 import { generateVolunteerCode } from '../../helpers/generateCode'
 import { deleteSession } from '../../helpers/jwt'
+import { deleteUserSessions } from '../../helpers/authenticationQueries'
 
 const ObjectId = require('mongoose').Types.ObjectId
 
@@ -233,6 +234,8 @@ export const deleteUser = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user')
     try {
+        let delete_sessions: any = await deleteUserSessions(user?._id);
+        logger.info("deleted user sessions "+" "+delete_sessions)
         let response = await userModel.findOneAndUpdate({ _id: ObjectId(user._id), isActive: true }, { isActive: false });
         if (response) {
             return res.status(200).json(new apiResponse(200, 'User successfully deleted!', {}))

@@ -123,21 +123,36 @@ async function applyOnEvent(req: any, userId: string): Promise<any> {
         const eventsAppliedOnSameDay = await eventModel.aggregate([
             {
               $match: {
-                _id: { $ne: ObjectId(body?._id) }, // Exclude the current event
+                workSpaceId: ObjectId(body?.workSpaceId),
                 isActive: true,
-                date: {
-                  $eq: new Date(getEventData?.date)
+                $expr: {
+                  $eq: [
+                    {
+                      $dateToString: {
+                        format: "%Y-%m-%d",
+                        date: "$date",
+                        timezone: "UTC" 
+                      }
+                    },
+                    {
+                      $dateToString: {
+                        format: "%Y-%m-%d",
+                        date: getEventData.date,
+                        timezone: "UTC" 
+                      }
+                    }
+                  ]
                 },
                 volunteerRequest: {
-                    $elemMatch: { volunteerId: ObjectId(userId) }
+                  $elemMatch: { volunteerId: ObjectId(userId) }
                 }
               }
             }
-        ]);
+          ]);
 
 
         if(eventsAppliedOnSameDay.length > 0) {
-            response['error'] = `Volunteer has already applied to another event ${eventsAppliedOnSameDay?.[0]?.name} on the same day.`;
+            response['error'] = `Volunteer has already applied to ${eventsAppliedOnSameDay?.[0]?.name} on the same day, please withdraw from this event and try again.`;
             return response
         }
 
@@ -190,9 +205,9 @@ async function checkEventCreationTime(req: any): Promise<any> {
     logger.info(eventDate.toString(), currentDate.toString(), eventStartTime.toString(), eventEndTime.toString())
     // Date comparisons
     if (eventDate < currentDate) {
-        throw new Error("Invalid event date, can't create event in past.");
+        throw new Error("Invalid event date, can't create event in the past.");
     }
-
+    
     // Duration check
     if (startTime - endTime < 3 * 3600000) {
         throw new Error("Event duration cannot be less than 3 hours.");
