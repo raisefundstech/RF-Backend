@@ -253,12 +253,21 @@ export const updateEvent = async (req: Request, res: Response) => {
     let user: any = req.header('user'), response: any, body = req.body;
     try {
         body.updatedBy = user?._id;
-        // only admin and super volunteer can update the event
+        // only admin can update the event
         if (body.startTime || body.endTime) {
             if (new Date(body.startTime) < new Date() || new Date(body.endTime) < new Date() || new Date(body.startTime).toString() == new Date(body.endTime).toString()) return res.status(400).json(new apiResponse(400, "Invalid start time or end time!", {}))
         }
         if (body.volunteerSize) {
             if (body.volunteerSize < 2) return res.status(400).json(new apiResponse(400, "Please add volunteer size more than 1 . ", {}))
+        }
+        let validWorkSpace = await workSpaceModel.findOne({ 
+            _id: ObjectId(body?.workSpaceId), 
+            stadiums: { $elemMatch: { _id: ObjectId(body?.stadiumId) } },
+            isActive: true
+        });
+
+        if(validWorkSpace == null) {
+            return res.status(400).json(new apiResponse(400, "Invalid workspace or stadium ID provided. Please provide valid IDs.", {}));
         }
         let userAuthority = await userModel.findOne({ _id: ObjectId(user?._id) }, { userType: 1 });
         if(userAuthority?.userType != 1){

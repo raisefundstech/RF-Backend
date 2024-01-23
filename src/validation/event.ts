@@ -28,15 +28,15 @@ export const createEvent = async (req: Request, res: Response, next: any) => {
 export const updateEvent = async (req: Request, res: Response, next: any) => {
     const schema = Joi.object({
         _id: Joi.string().trim().required().error(new Error('event id is required!')),
-        name: Joi.string().trim().allow(null, "").error(new Error('name is string!')),
-        stadiumId: Joi.string().trim().allow(null, "").error(new Error('stadiumId is objectId!')),
-        workSpaceId: Joi.string().trim().allow(null, "").error(new Error('workSpaceId is objectId!')),
-        date: Joi.string().trim().allow(null, "").error(new Error('date is string!')),
-        startTime: Joi.string().trim().allow(null, "").error(new Error('startTime is string!')),
-        endTime: Joi.string().trim().allow(null, "").error(new Error('endTime is string!')),
+        name: Joi.string().trim().required().error(new Error('name is string!')),
+        stadiumId: Joi.string().trim().required().error(new Error('stadiumId is required!')),
+        workSpaceId: Joi.string().trim().required().error(new Error('workSpaceId is required!')),
+        date: Joi.string().trim().required().error(new Error('date is string!')),
+        startTime: Joi.string().trim().required().error(new Error('startTime is string!')),
+        endTime: Joi.string().trim().required().error(new Error('endTime is string!')),
         volunteerSize: Joi.number().allow(null).error(new Error('volunteerSize is number!')),
         notes: Joi.string().trim().allow(null, "").error(new Error('notes is string!')),
-        rfCoins: Joi.number().allow(null,"").error(new Error('rfCoins is number!'))
+        rfCoins: Joi.number().required().error(new Error('rfCoins is number!'))
     });
     schema.validateAsync(req.body).then(result => {
         if (!isValidObjectId(result._id)) return res.status(400).json(new apiResponse(400, 'invalid id', {}));
