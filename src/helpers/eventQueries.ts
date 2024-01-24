@@ -314,10 +314,14 @@ async function updateVolunteersCheckOutStatus(eventId: string, volunteerId: stri
     try {
         // check if volunteer has checked-in
         const event = await eventModel.findOne({
-            _id: ObjectId(eventId),
-            isActive: true,
-            "volunteerRequest.volunteerId": ObjectId(volunteerId),
-            "volunteerRequest.checkedIn": { $ne: null },
+          _id: ObjectId(eventId),
+          isActive: true,
+          volunteerRequest: {
+            $elemMatch: {
+              volunteerId: ObjectId(volunteerId),
+              checkedIn: { $ne: null },
+            },
+          },
         });
         
         if (!event) {
