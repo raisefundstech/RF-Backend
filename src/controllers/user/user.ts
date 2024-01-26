@@ -5,6 +5,7 @@ import { responseMessage } from '../../helpers'
 import { userModel, workSpaceModel } from '../../database'
 import { generateVolunteerCode } from '../../helpers/generateCode'
 import { deleteSession } from '../../helpers/jwt'
+import { sendNotification, mapTokensToUser } from '../../helpers/notification'
 import { deleteUserSessions } from '../../helpers/authenticationQueries'
 
 const ObjectId = require('mongoose').Types.ObjectId
@@ -200,6 +201,20 @@ export const updateVolunteerPosition = async (req: Request, res: Response) => {
     try {
         if (userAuthority.userType == 1) {
             response = await userModel.findOneAndUpdate({ _id: ObjectId(body._id), isActive: true }, body, { new: true })
+            if(body?.userStatus == 1) {
+                let userInfo = await userModel.findOne({_id: ObjectId(body?._id),isActive:true})
+                const tokens: string[] = userInfo?.device_token;
+                const userTokenMapper = mapTokensToUser(body?._id, tokens);
+                const payload = {
+                    title: 'Profile Approved',
+                    message: `Congratualtions, your profile has been approved by ${userAuthority?.firstName} ${userAuthority?.lastName} and you can now apply to events!`,
+                    data: {
+                        type: 1,
+                        eventId: response?._id
+                    }
+                };
+                sendNotification(tokens, userTokenMapper, payload);
+            }
         }
         if (response) {
             return res.status(200).json(new apiResponse(200, 'Volunteer information updated successfully!', {}))

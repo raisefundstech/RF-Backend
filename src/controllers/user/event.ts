@@ -6,8 +6,7 @@ import { responseMessage } from '../../helpers'
 import { 
     volunteerInfoByEvent, 
     applyOnEvent, 
-    withdrawFromEvent, 
-    getEventInfo, 
+    withdrawFromEvent,  
     fetchAdminsAndSuperVolunteers, 
     updateVolunteersRequestStatus,
     updateVolunteersCheckInStatus, 
