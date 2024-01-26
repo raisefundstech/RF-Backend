@@ -203,10 +203,6 @@ async function checkEventCreationTime(req: any): Promise<any> {
     const eventEndTime = new Date(endTime);
 
     logger.info(eventDate.toString(), currentDate.toString(), eventStartTime.toString(), eventEndTime.toString())
-    // Date comparisons
-    if (eventDate < currentDate) {
-        throw new Error("Invalid event date, can't create event in the past.");
-    }
     
     // Duration check
     if (startTime - endTime < 3 * 3600000) {

@@ -138,6 +138,7 @@ export const getVolunteers = async (req: Request, res: Response) => {
                   $regex: queryname, // "i" makes the regex case-insensitive
                   $options: "i",
                 },
+                userStatus: { $in: [1, 2] }
               },
             },
             {
