@@ -117,6 +117,7 @@ export const getVolunteers = async (req: Request, res: Response) => {
                 $match: {
                     workSpaceId: ObjectId(workSpaceId),
                     isActive: true,
+                    userStatus: { $in: [1, 2] }
                 }
             },
             {
@@ -138,8 +139,7 @@ export const getVolunteers = async (req: Request, res: Response) => {
                 name: {
                   $regex: queryname, // "i" makes the regex case-insensitive
                   $options: "i",
-                },
-                userStatus: { $in: [1, 2] }
+                }
               },
             },
             {
