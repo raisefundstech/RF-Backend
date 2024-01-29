@@ -183,15 +183,20 @@ export const getEvents = async (req: Request, res: Response) => {
     }
 }
 
+/**
+ * Creates a new event.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns The response with the created event or an error message.
+ */
 export const createEvent = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any, body = req.body
-    try {
-
+    try {    
         body.createdBy = user?._id;
         let userInfo = await getUser(user?._id, true);
-        logger.info(userInfo?.length);
-
+        logger.info(userInfo?.userType);
         if(userInfo?.userType != 1) { 
             return res.status(400).json(new apiResponse(400, "You are not authorized to create event.", {}));
         }
