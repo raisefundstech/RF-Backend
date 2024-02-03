@@ -13,6 +13,7 @@ const eventSchema: any = new mongoose.Schema({
     notes: { type: String, default: null },
     rfCoins : { type: Number, default: 0 },
     stadiumId: { type: mongoose.Schema.Types.ObjectId, default: null },
+    parkingPassImageURL: { type: String, default: null },
     volunteerRequest: {
         type: [{
             volunteerId: { type: mongoose.Schema.Types.ObjectId },
