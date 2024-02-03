@@ -35,6 +35,7 @@ async function volunteerInfoByEvent (req: any, user: any): Promise<any> {
             createdBy: 1,
             updatedBy: 1,
             isActive: 1,
+            parkingPassImageURL: 1,
             volunteerRequest: {
                 $map: {
                 input: "$volunteerRequest",
@@ -71,7 +72,9 @@ async function volunteerInfoByEvent (req: any, user: any): Promise<any> {
                         firstName: "$$userDetails.firstName",
                         lastName: "$$userDetails.lastName",
                         mobileNumber: "$$userDetails.mobileNumber",
-                        image: "$$userDetails.image"
+                        image: "$$userDetails.image",
+                        rbsImage: "$$userDetails.rbsImage",
+                        isRBSAvailable: "$$userDetails.isRBSAvailable",
                         }
                     }
                     }

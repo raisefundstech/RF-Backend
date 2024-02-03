@@ -14,7 +14,8 @@ export const createEvent = async (req: Request, res: Response, next: any) => {
         endTime: Joi.string().required().error(new Error('endTime is required!')),
         volunteerSize: Joi.number().required().error(new Error('volunteerSize is required!')),
         notes: Joi.string().allow(null, "").error(new Error('notes is string!')),
-        rfCoins: Joi.number().required().error(new Error('rfCoins is number!'))
+        rfCoins: Joi.number().required().error(new Error('rfCoins is number!')),
+        parkingPassImageURL: Joi.string().allow(null, "").error(new Error('parkingPassImageURL is string!'))
     });
     schema.validateAsync(req.body).then(result => {
         if (!isValidObjectId(result.workSpaceId)) return res.status(400).json(new apiResponse(400, 'invalid workSpaceId', {}));
@@ -36,7 +37,8 @@ export const updateEvent = async (req: Request, res: Response, next: any) => {
         endTime: Joi.string().trim().required().error(new Error('endTime is string!')),
         volunteerSize: Joi.number().allow(null).error(new Error('volunteerSize is number!')),
         notes: Joi.string().trim().allow(null, "").error(new Error('notes is string!')),
-        rfCoins: Joi.number().required().error(new Error('rfCoins is number!'))
+        rfCoins: Joi.number().required().error(new Error('rfCoins is number!')),
+        parkingPassImageURL: Joi.string().allow(null, "").error(new Error('parkingPassImageURL is string!'))
     });
     schema.validateAsync(req.body).then(result => {
         if (!isValidObjectId(result._id)) return res.status(400).json(new apiResponse(400, 'invalid id', {}));
