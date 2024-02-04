@@ -5,12 +5,12 @@ phases:
     runtime-versions:
       nodejs: latest
     commands:
-      - npm install -g yarn typescript
-      - yarn install
+      - npm install -g typescript
+      - npm install
   build:
     commands:
       - echo Build started on `date`
-      - yarn build
+      - npm run build
   post_build:
     commands:
       - echo Build completed on `date`
