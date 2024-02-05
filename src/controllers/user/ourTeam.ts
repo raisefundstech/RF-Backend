@@ -5,6 +5,13 @@ import { responseMessage } from '../../helpers'
 import { ourTeamModel } from '../../database'
 const ObjectId = require('mongoose').Types.ObjectId
 
+/**
+ * Creates a new entry in the "ourTeam" collection.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response indicating the success or failure of the operation.
+ */
 export const createOurTeam = async (req: Request, res: Response) => {
     reqInfo(req)
     let response: any, body = req.body;
@@ -17,6 +24,13 @@ export const createOurTeam = async (req: Request, res: Response) => {
     }
 }
 
+/**
+ * Updates the information of a team member in the "Our Team" section.
+ * 
+ * @param req - The request object containing the updated team member data.
+ * @param res - The response object used to send the result of the update operation.
+ * @returns A JSON response indicating the success or failure of the update operation.
+ */
 export const updateOurTeam = async (req: Request, res: Response) => {
     reqInfo(req)
     let response: any, body = req.body;
@@ -29,6 +43,13 @@ export const updateOurTeam = async (req: Request, res: Response) => {
     }
 }
 
+/**
+ * Retrieves the information about the team members.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response with the team members' information.
+ */
 export const getOurTeam = async (req: Request, res: Response) => {
     reqInfo(req)
     let response: any

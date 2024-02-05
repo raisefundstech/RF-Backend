@@ -1,3 +1,7 @@
+/**
+ * Generates a volunteer code.
+ * @returns {string} The generated volunteer code.
+ */
 export const generateVolunteerCode = () => {
     let result = '';
     const number = Math.floor(1000 + Math.random() * 9999);
@@ -13,6 +17,11 @@ export const generateVolunteerCode = () => {
 }
 
 // Genrates a random 6-digit OTP
+/**
+ * Generates a One-Time Password (OTP) based on the current Linux epoch timestamp.
+ * If the timestamp has less than 6 digits, random digits are added to the end.
+ * @returns The generated OTP.
+ */
 export const generateOTP = () => {
     const timestamp = Math.floor(Date.now() / 1000); // Get current Linux epoch timestamp
     const lastSixDigits = timestamp.toString().slice(-6); // Get last 6 digits

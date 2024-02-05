@@ -41,6 +41,9 @@ let fileLogger = winston.format.combine(
     )
 )
 
+/**
+ * Winston logger instance.
+ */
 export const logger = winston.createLogger({
     level: Winston.level,
     transports: [
@@ -54,6 +57,11 @@ export const logger = winston.createLogger({
     ],
 });
 
+/**
+ * Extracts information from the request object and logs it using Winston logger.
+ * @param req - The request object.
+ * @returns A Promise that resolves when the logging is complete.
+ */
 export const reqInfo = async function (req) {
     let splitResult = req.header('user-agent')?.split("(")?.toString()?.split(")")
     let browserName = splitResult?.[splitResult?.length - 1]

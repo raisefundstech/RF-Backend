@@ -28,6 +28,13 @@ const ObjectId = require('mongoose').Types.ObjectId
 const moment = require('moment-timezone');
 
 // Fetch my events based on the user
+/**
+ * Retrieves events associated with the current user.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response with the retrieved events or an error message.
+ */
 export const getMyEvents = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any
@@ -104,6 +111,13 @@ export const getMyEvents = async (req: Request, res: Response) => {
 }
 
 // Fetch all the events based on the workspace provided 
+/**
+ * Retrieves events based on the user's workspace and access level.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns The response with the retrieved events or an error message.
+ */
 export const getEvents = async (req: Request, res: Response) => {
     reqInfo(req);
     let user: any = req.header('user');
@@ -252,6 +266,13 @@ export const createEvent = async (req: Request, res: Response) => {
     }
 }
 
+/**
+ * Updates an event.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns The updated event or an error response.
+ */
 export const updateEvent = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any, body = req.body;
@@ -288,6 +309,13 @@ export const updateEvent = async (req: Request, res: Response) => {
     }
 }
 
+/**
+ * Retrieves an event by its ID.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response with the event data if found, or an error response if not found or an error occurred.
+ */
 export const getEventById = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any
@@ -296,6 +324,7 @@ export const getEventById = async (req: Request, res: Response) => {
         const pipeline = await volunteerInfoByEvent(req, user);
         response = await eventModel.aggregate(pipeline);
         const stadiumInfo: any = await getStadiumDetails(req?.params?.id);
+        // Inject stadium details into the response
         response[0].stadiumName = stadiumInfo?.[0]?.name;
         response[0].stadiumAddress = stadiumInfo?.[0]?.address;
         response[0].stadiumPolicy = stadiumInfo?.[0]?.stadiumPolicy;
@@ -312,6 +341,13 @@ export const getEventById = async (req: Request, res: Response) => {
     }
 }
 
+/**
+ * Deletes an event.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response indicating the status of the deletion.
+ */
 export const deleteEvent = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any
@@ -328,6 +364,13 @@ export const deleteEvent = async (req: Request, res: Response) => {
     }
 }
 
+/**
+ * Retrieves paginated event data based on the provided request parameters.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns The paginated event data along with pagination information.
+ */
 export const get_event_pagination = async (req: Request, res: Response) => {
     reqInfo(req)
     let { workSpaceId, search, page, limit } = req.body, event_data: any, match: any = {}, event_count: any
@@ -428,8 +471,14 @@ export const get_event_pagination = async (req: Request, res: Response) => {
     }
 }
 
-// task: minimize the function code for apply witddraw and updateVolunteers to reduce code duplication
-// requires workspaceId for this 
+
+/**
+ * Applies for an event.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response indicating the success or failure of the application.
+ */
 export const apply = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any, body = req.body, match: any = {}, findUser: any
@@ -484,6 +533,14 @@ export const apply = async (req: Request, res: Response) => {
     }
 }
 
+
+/**
+ * Withdraws a user from an event.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response indicating the success or failure of the withdrawal.
+ */
 export const withdraw = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any, body = req.body
@@ -527,6 +584,15 @@ export const withdraw = async (req: Request, res: Response) => {
     }
 }
 
+
+/**
+ * Updates the volunteers' request status for an event.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response indicating the status of the update operation.
+ * @throws If the user is not authorized to update volunteer request status, or if the request data is invalid.
+ */
 export const updateVolunteers = async (req: Request, res: Response) => {
     reqInfo(req);
     try {
@@ -599,6 +665,12 @@ export const updateVolunteers = async (req: Request, res: Response) => {
 };
 
 
+/**
+ * Retrieves paginated event data for volunteers based on the provided request parameters.
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns The response with paginated event data and pagination information.
+ */
 export const get_event_pagination_for_volunteers = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user')
@@ -663,6 +735,12 @@ export const get_event_pagination_for_volunteers = async (req: Request, res: Res
     }
 }
 
+/**
+ * Retrieves volunteers associated with a specific event.
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response with the volunteer data.
+ */
 export const getVolunteerByEvent = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any, body = req.body, match = []
@@ -754,6 +832,13 @@ export const getVolunteerByEvent = async (req: Request, res: Response) => {
     }
 }
 
+/**
+ * Adds a volunteer to an event.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response indicating the success or failure of adding volunteers to the event.
+ */
 export const addVolunteerToEvent = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any, body = req.body;
@@ -773,8 +858,6 @@ export const addVolunteerToEvent = async (req: Request, res: Response) => {
         return res.status(500).json(new apiResponse(500, responseMessage?.customMessage(error), error));
     }
 }
-
-// In the body I require eventId, volunteerId and chekin status
 
 /**
  * Handles the check-in process for volunteers attending an event.

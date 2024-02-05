@@ -2,6 +2,12 @@ import { eventModel,userModel, workSpaceModel } from "../database";
 import { logger } from "./winston_logger";
 const ObjectId = require('mongoose').Types.ObjectId
 
+/**
+ * Retrieves volunteer information for a specific event.
+ * @param req - The request object.
+ * @param user - The user object.
+ * @returns A promise that resolves to an array of event documents.
+ */
 async function volunteerInfoByEvent (req: any, user: any): Promise<any> {
     const events = [
         {
@@ -117,6 +123,14 @@ async function volunteerInfoByEvent (req: any, user: any): Promise<any> {
     return events;
 }
 
+/**
+ * Applies the volunteer's request on an event.
+ * 
+ * @param req - The request object.
+ * @param userId - The ID of the volunteer.
+ * @returns A promise that resolves to the response object.
+ * @throws If an error occurs during the process.
+ */
 async function applyOnEvent(req: any, userId: string): Promise<any> {
     try {
         let response: any = {}, body = req.body; 
@@ -193,6 +207,13 @@ async function applyOnEvent(req: any, userId: string): Promise<any> {
     }
 }
 
+/**
+ * Checks the creation time of an event.
+ * 
+ * @param req - The request object containing the event details.
+ * @returns A promise that resolves to the result of the check.
+ * @throws An error if the event date, start time, or end time is null, or if the event duration is less than 3 hours.
+ */
 async function checkEventCreationTime(req: any): Promise<any> {
     const { date, startTime, endTime }: { date: any; startTime: any; endTime: any } = req.body;
 
@@ -213,7 +234,13 @@ async function checkEventCreationTime(req: any): Promise<any> {
     }
 }
 
-
+/**
+ * Withdraws a user from an event.
+ * 
+ * @param req - The request object containing the user information.
+ * @returns A Promise that resolves to the updated event object after the user is withdrawn.
+ * @throws An error if the volunteer request is not found.
+ */
 async function withdrawFromEvent(req: any): Promise<any> {
     try {
         let user: any = req.header('user'), response: any
@@ -239,6 +266,14 @@ async function withdrawFromEvent(req: any): Promise<any> {
     }
 }
 
+/**
+ * Updates the request status and user note for a volunteer in the event model.
+ * @param req - The request object.
+ * @param volunteerId - The ID of the volunteer.
+ * @param status - The new request status.
+ * @param userNote - The user note to be added.
+ * @returns A promise that resolves to the updated event model.
+ */
 async function updateVolunteersRequestStatus(req: any, volunteerId: string, status: string, userNote: string): Promise<any> {
     try {
         const { body } = req;
@@ -281,6 +316,12 @@ async function updateVolunteersRequestStatus(req: any, volunteerId: string, stat
     }
 }
 
+/**
+ * Updates the check-in status of a volunteer for a specific event.
+ * @param eventId - The ID of the event.
+ * @param volunteerId - The ID of the volunteer.
+ * @returns A Promise that resolves to the updated event object.
+ */
 async function updateVolunteersCheckInStatus(eventId: string, volunteerId: string): Promise<any> {
     try {
         const response = await eventModel.findOneAndUpdate(
@@ -309,6 +350,14 @@ async function updateVolunteersCheckInStatus(eventId: string, volunteerId: strin
     }
 }
 
+/**
+ * Updates the checkout status of a volunteer for a specific event.
+ * 
+ * @param eventId - The ID of the event.
+ * @param volunteerId - The ID of the volunteer.
+ * @returns A Promise that resolves to the updated event object.
+ * @throws An error if the volunteer has not checked in yet or if the volunteer ID is invalid.
+ */
 async function updateVolunteersCheckOutStatus(eventId: string, volunteerId: string): Promise<any> {
     try {
         // check if volunteer has checked-in
@@ -354,6 +403,13 @@ async function updateVolunteersCheckOutStatus(eventId: string, volunteerId: stri
     }
 }
 
+/**
+ * Fetches admins and super volunteers based on the provided workspace ID.
+ * 
+ * @param {string} workspaceId - The ID of the workspace.
+ * @returns {Promise<any>} - A promise that resolves to the fetched admins and super volunteers.
+ * @throws {Error} - If an error occurs while fetching the data.
+ */
 async function fetchAdminsAndSuperVolunteers(workspaceId: string): Promise<any> {
     try {
         let response: any;
@@ -372,6 +428,12 @@ async function fetchAdminsAndSuperVolunteers(workspaceId: string): Promise<any> 
     }
 }
 
+/**
+ * Retrieves information about an event.
+ * @param eventId - The ID of the event.
+ * @returns A Promise that resolves to the event information.
+ * @throws If an error occurs while retrieving the event information.
+ */
 async function getEventInfo(eventId: string): Promise<any> {
     try {
         let response: any;
@@ -391,6 +453,12 @@ async function getEventInfo(eventId: string): Promise<any> {
     }
 }
 
+/**
+ * Updates the user associated with an event.
+ * @param {string} eventId - The ID of the event.
+ * @param {string} userId - The ID of the user.
+ * @throws {Error} If an error occurs while updating the user.
+ */
 async function userUpdated(eventId: string, userId: string){
     try {
         let response: any;
@@ -405,6 +473,12 @@ async function userUpdated(eventId: string, userId: string){
     }
 }
 
+/**
+ * Retrieves the details of a stadium associated with an event.
+ * @param eventId - The ID of the event.
+ * @returns A promise that resolves to the stadium details.
+ * @throws If an error occurs while retrieving the stadium details.
+ */
 async function getStadiumDetails(eventId: string) {
     try {
         const eventStadiumInfo = await eventModel.aggregate([
@@ -472,6 +546,12 @@ async function getStadiumDetails(eventId: string) {
 }
 
 
+/**
+ * Adds stadium details to the events payload.
+ * @param eventsPayload - The array of events payload.
+ * @returns The updated events payload with stadium details.
+ * @throws If an error occurs while retrieving stadium details.
+ */
 async function addStadiumDetails(eventsPayload: any) {
     try {
         let idx = 0;

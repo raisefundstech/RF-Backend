@@ -25,6 +25,11 @@ function generateReferenceId(){
     return String(timestampInSeconds);
 }
 
+/**
+ * Sends an SMS message to the specified receiver.
+ * @param receiver_info - The information of the receiver, including the mobile number.
+ * @returns A promise that resolves with the response from the SMS service.
+ */
 export async function sendSMS(receiver_info) : Promise<any> {
     return new Promise(async (resolve, reject) => {
         var referenceId = generateReferenceId();
@@ -57,6 +62,11 @@ export async function sendSMS(receiver_info) : Promise<any> {
     });
 }
 
+/**
+ * Validates the OTP (One-Time Password) using the provided OTP information.
+ * @param otp_info - The OTP information object.
+ * @returns A promise that resolves with the response from the OTP verification.
+ */
 export async function validOTP(otp_info) : Promise<any> {
     return new Promise(async (resolve, reject) => {
         try {
@@ -78,6 +88,12 @@ export async function validOTP(otp_info) : Promise<any> {
     });
 }
 
+/**
+ * Sends a login SMS to the specified destination number.
+ * @param destinationNumber - The phone number to send the SMS to.
+ * @param message - The content of the SMS message.
+ * @returns A promise that resolves to the result of sending the SMS.
+ */
 export async function sendLoginSMS(destinationNumber: string, message: string): Promise<any> {
   const referenceId = generateReferenceId();
 

@@ -6,6 +6,13 @@ import { responseMessage } from '../../helpers'
 import { userModel, workSpaceModel } from '../../database'
 const ObjectId = require('mongoose').Types.ObjectId
 
+/**
+ * Creates a new workspace.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response indicating the success or failure of the operation.
+ */
 export const createWorkSpace = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any, body = req.body, search = new RegExp(`^${body.name}$`, "ig");
@@ -26,6 +33,13 @@ export const createWorkSpace = async (req: Request, res: Response) => {
     }
 }
 
+/**
+ * Updates a workspace.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns The updated workspace or an error response.
+ */
 export const updateWorkSpace = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any, body = req.body;
@@ -39,6 +53,13 @@ export const updateWorkSpace = async (req: Request, res: Response) => {
     }
 }
 
+/**
+ * Retrieves the workspace data.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns The workspace data if found, or an error response if not found or an error occurred.
+ */
 export const getWorkSpace = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any
@@ -52,6 +73,13 @@ export const getWorkSpace = async (req: Request, res: Response) => {
     }
 }
 
+/**
+ * Retrieves the workspaces associated with a manager.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response containing the workspaces if successful, or an error response if unsuccessful.
+ */
 export const getWorkSpaceByManager = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any
@@ -67,6 +95,12 @@ export const getWorkSpaceByManager = async (req: Request, res: Response) => {
     }
 }
 
+/**
+ * Retrieves a workspace by its ID.
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response with the workspace data if found, or an error response if not found or an error occurred.
+ */
 export const getWorkSpaceById = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any
@@ -79,6 +113,13 @@ export const getWorkSpaceById = async (req: Request, res: Response) => {
     }
 }
 
+/**
+ * Deletes a workspace.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response indicating the success or failure of the operation.
+ */
 export const deleteWorkSpace = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any
@@ -94,6 +135,12 @@ export const deleteWorkSpace = async (req: Request, res: Response) => {
     }
 }
 
+/**
+ * Retrieves work space data with pagination and search functionality.
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns The response with work space data and pagination information.
+ */
 export const get_workSpace_pagination = async (req: Request, res: Response) => {
     reqInfo(req)
     let { search, page, limit } = req.body, workSpace_data: any, match: any = {}, workSpace_count: any
@@ -132,6 +179,12 @@ export const get_workSpace_pagination = async (req: Request, res: Response) => {
     }
 }
 
+/**
+ * Retrieves volunteers by workspace ID.
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response with the retrieved volunteers or an error message.
+ */
 export const getVolunteerByWorkSpace = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any
@@ -145,6 +198,13 @@ export const getVolunteerByWorkSpace = async (req: Request, res: Response) => {
     }
 }
 
+/**
+ * Adds a stadium to a workspace.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response indicating the success or failure of the operation.
+ */
 export const addStadiumByWorkspace = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any, body = req.body;
@@ -210,6 +270,13 @@ export const addStadiumByWorkspace = async (req: Request, res: Response) => {
     }
 }
 
+/**
+ * Retrieves the details of a stadium by workspace ID and stadium ID.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns The stadium details if found, or an error response if not found or an error occurred.
+ */
 export const getStadiumDetailsByWorkSpace = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any
@@ -242,6 +309,13 @@ export const getStadiumDetailsByWorkSpace = async (req: Request, res: Response) 
     }
 }
 
+/**
+ * Updates a stadium by workspace.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns The updated stadium information or an error response.
+ */
 export const updateStadiumByWorkSpace = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any, body = req.body;

@@ -1,6 +1,12 @@
 import nodemailer from 'nodemailer';
 import config from 'config'
 
+/**
+ * Sends an email with the provided OTP to the specified receiver.
+ * @param receiver - The email address of the receiver.
+ * @param otp - The OTP (One-Time Password) to be included in the email.
+ * @returns A Promise that resolves with the information about the sent email.
+ */
 export async function sendEmail(receiver,otp) : Promise<any> {
     return new Promise(async (resolve, reject) => {
         // Get the email configuration from the config file

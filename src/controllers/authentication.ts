@@ -16,6 +16,13 @@ const ObjectId = require('mongoose').Types.ObjectId
 const jwt_token_secret: any = config.get('jwt_token_secret')
 const refresh_jwt_token_secret: any = config.get('refresh_jwt_token_secret')
 
+/**
+ * Handles user sign up.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response indicating the success or failure of the sign up process.
+ */
 export const userSignUp = async (req: Request, res: Response) => {
     reqInfo(req)
     try {
@@ -53,6 +60,13 @@ export const userSignUp = async (req: Request, res: Response) => {
     }
 }
 
+/**
+ * Handles user sign-in.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response indicating the status of the sign-in process.
+ */
 export const userSignIn = async (req: Request, res: Response) => {
     let body = req.body;
     let otpFlag = 1;
@@ -97,6 +111,13 @@ export const userSignIn = async (req: Request, res: Response) => {
     }
 };
 
+/**
+ * Handles OTP verification for user authentication.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response indicating the result of the OTP verification.
+ */
 export const otpVerification = async (req: Request, res: Response) => {
     reqInfo(req)
     try {
@@ -186,6 +207,13 @@ export const otpVerification = async (req: Request, res: Response) => {
     }
 }
 
+/**
+ * Sends an OTP (One-Time Password) via SMS to the provided mobile number.
+ * 
+ * @param req - The request object containing the mobile number in the request body.
+ * @param res - The response object used to send the API response.
+ * @returns A JSON response indicating the success or failure of sending the OTP.
+ */
 export const sendOTP = async (req: Request, res: Response) => {
   try {
     const body = req.body;    // You should define the 'sendSMS' function to send the OTP via SMS
@@ -214,6 +242,12 @@ export const sendOTP = async (req: Request, res: Response) => {
 };
 
 // The verify OTP 
+/**
+ * Verifies the OTP sent by the user.
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response indicating the result of OTP verification.
+ */
 export const verifyOTP = async (req: Request, res: Response) => {
     try {
       const body = req.body;    // You should define the 'sendSMS' function to send the OTP via SMS
@@ -234,9 +268,15 @@ export const verifyOTP = async (req: Request, res: Response) => {
       console.error(error); // Log the error for debugging
       return res.status(500).json(new apiResponse(500, 'Internal server error',{error}));
     }
-  };
+};
 
-
+/**
+ * Resends OTP (One-Time Password) to the user's mobile number and email.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response indicating the status of the OTP resend operation.
+ */
 export const resendOTP = async (req: Request, res: Response) => {
     reqInfo(req)
     try {
@@ -288,6 +328,13 @@ export const resendOTP = async (req: Request, res: Response) => {
     }
 }
 
+/**
+ * Logs out the user by removing the device token from the user's document in the database.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response indicating the success or failure of the logout operation.
+ */
 export const userLogout = async (req: Request, res: Response) => {
     reqInfo(req)
     try {

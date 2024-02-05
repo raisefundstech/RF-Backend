@@ -10,6 +10,12 @@ import { deleteUserSessions } from '../../helpers/authenticationQueries'
 
 const ObjectId = require('mongoose').Types.ObjectId
 
+/**
+ * Retrieves the user profile.
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns The user profile information or an error response.
+ */
 export const getProfile = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any
@@ -55,6 +61,13 @@ export const getProfile = async (req: Request, res: Response) => {
     }
 }
 
+/**
+ * Updates the user profile.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response indicating the status of the profile update.
+ */
 export const updateProfile = async (req: Request, res: Response) => {
     reqInfo(req)
     let body = req.body, user: any = req.header('user')
@@ -79,6 +92,13 @@ export const updateProfile = async (req: Request, res: Response) => {
     }
 }
 
+/**
+ * Switches the workspace for a user.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response indicating the success or failure of the workspace switch.
+ */
 export const switchWorkSpace = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any, body = req.body;
@@ -98,6 +118,13 @@ export const switchWorkSpace = async (req: Request, res: Response) => {
     }
 }
 
+/**
+ * Retrieves a list of volunteers based on the provided request parameters.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response containing the list of volunteers or an error message.
+ */
 export const getVolunteers = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any, match: any = {}
@@ -164,13 +191,21 @@ export const getVolunteers = async (req: Request, res: Response) => {
     }
 }
 
-// This function is responsible for retrieving the details of a volunteer.
-// It checks the user's permission and returns the volunteer's information if the user is an admin or a super-volunteer.
-// The volunteer ID is required as a parameter in the request.
-// If the volunteer is found, it returns a success response with the volunteer's details.
-// If the volunteer is not found, it returns a not found response.
-// If the user does not have the necessary permission, it returns an unauthorized response.
-// If there is an error during the process, it returns a server error response.
+/**
+ * Retrieves the details of a volunteer.
+ * 
+ * This function checks the user's permission and returns the volunteer's information if the user is an admin or a super-volunteer.
+ * The volunteer ID is required as a parameter in the request.
+ * 
+ * If the volunteer is found, it returns a success response with the volunteer's details.
+ * If the volunteer is not found, it returns a not found response.
+ * If the user does not have the necessary permission, it returns an unauthorized response.
+ * If there is an error during the process, it returns a server error response.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response containing the volunteer's details or an error response.
+ */
 export const getVolunteer = async (req: Request, res: Response) => {
     reqInfo(req)
     const user: any = req.header('user') || '';
@@ -194,6 +229,17 @@ export const getVolunteer = async (req: Request, res: Response) => {
     }
 }
 
+/**
+ * Updates the volunteer position based on the request body.
+ * If the user has admin privileges, it updates the volunteer information and sends a notification to the volunteer.
+ * If the update is successful, it returns a success response.
+ * If the user does not have admin privileges, it returns an error response.
+ * If there is an error during the update process, it returns an error response with the corresponding error message.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response indicating the status of the update operation.
+ */
 export const updateVolunteerPosition = async (req: Request, res: Response) => {
     reqInfo(req)
     let body = req.body, response, user: any = req.header('user');
@@ -226,7 +272,13 @@ export const updateVolunteerPosition = async (req: Request, res: Response) => {
     }
 }
 
-// This function is responsible for adding a new volunteer which can be performed by an admin or a super-volunteer.
+/**
+ * Adds a volunteer to the system.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response indicating the success or failure of the operation.
+ */
 export const addVolunteer = async (req: Request, res: Response) => {
     reqInfo(req)
     let body = req.body,
@@ -246,22 +298,38 @@ export const addVolunteer = async (req: Request, res: Response) => {
     }
 }
 
+/**
+ * Deletes a user.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response indicating the success or failure of the operation.
+ */
 export const deleteUser = async (req: Request, res: Response) => {
-    reqInfo(req)
-    let user: any = req.header('user')
+    reqInfo(req);
+    let user: any = req.header('user');
     try {
         let delete_sessions: any = await deleteUserSessions(user?._id);
-        logger.info("deleted user sessions "+" "+delete_sessions)
+        logger.info(`Deleted user sessions: ${delete_sessions}`);
         let response = await userModel.findOneAndUpdate({ _id: ObjectId(user._id), isActive: true }, { isActive: false });
         if (response) {
-            return res.status(200).json(new apiResponse(200, 'User successfully deleted!', {}))
+            return res.status(200).json(new apiResponse(200, 'User successfully deleted!', {}));
+        } else {
+            return res.status(404).json(new apiResponse(501, responseMessage?.updateDataError('User'), {}));
         }
-        else return res.status(404).json(new apiResponse(501, responseMessage?.updateDataError('User'), {}))
     } catch (error) {
+        logger.error(`Error deleting user: ${error}`);
         return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, error));
     }
 }
 
+/**
+ * Logs out a user.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response indicating the success or failure of the logout operation.
+ */
 export const logoutUser = async (req: Request, res: Response) => {
     reqInfo(req);
     let user: any = req.header('user');
@@ -277,6 +345,12 @@ export const logoutUser = async (req: Request, res: Response) => {
     }      
 }
 
+/**
+ * Retrieves a list of unverified volunteers based on the provided workspace ID.
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response containing the list of unverified volunteers or an error message.
+ */
 export const getUnverifiedVolunteers = async (req: Request, res: Response) => {
     reqInfo(req);
     let user: any = req.header('user');
