@@ -1,11 +1,15 @@
+# Do not change version. This is the version of aws buildspec, not the version of your buldspec file.
 version: 0.2
 
 phases:
   install:
     runtime-versions:
-      nodejs: latest
+      nodejs: 18
     commands:
       - npm install -g typescript
+  pre_build:
+    commands:
+      - echo Installing source NPM dependencies...
       - npm install
   build:
     commands:
@@ -17,6 +21,11 @@ phases:
       - echo Build completed on `date`
 artifacts:
   files:
+    - dist/**/*
+    - config/**/*
     - package.json
     - package-lock.json
-  discard-paths: yes
+    - tsconfig.json
+    - server.ts
+    - node_modules/**/*
+  name: raisefundsbackend-$(date +%Y-%m-%d-%H-%M-%S)
