@@ -21,7 +21,7 @@ router.get('/sendCSVFile', userController.sendCSVFile)
 
 //  ------  Account Routes  -------
 router.get('/profile', userController?.getProfile)
-router.put('/profile/update', userController?.updateProfile)
+router.put('/profile/update', userValidation?.profileUpdate, userController?.updateProfile)
 
 //  ------  Home Page Routes  ------
 router.get('/homePage', userController.homePage)
@@ -35,9 +35,13 @@ router.delete('/workSpace/:id', workSpaceValidation.by_id, userController.delete
 router.put('/workSpace/switch/:id', workSpaceValidation.by_id, userController.switchWorkSpace)
 router.get('/workSpace/volunteer/:id', workSpaceValidation.by_id, userController.getVolunteerByWorkSpace)
 router.get('/workSpaces/manager', userController.getWorkSpaceByManager)
+router.get('/workSpace/stadiums/:id', workSpaceValidation.fetch_stadium, userController.getStadiumDetailsByWorkSpace)
+router.post('/workSpace/stadiums/add', workSpaceValidation.add_stadiums, userController.addStadiumByWorkspace)
+router.put('/workSpace/stadiums/update', workSpaceValidation.updateStadium, userController.updateStadiumByWorkSpace)
 
 //  ------  Event Routes  ------
-router.get('/events/:id', eventValidation.by_workspace_id,userController.getEvents)
+router.get('/myevents', userController.getMyEvents)
+router.get('/events' ,userController.getEvents)
 router.post('/event/get', userController.get_event_pagination)
 router.post('/event/volunteer/page', userController.get_event_pagination_for_volunteers)
 router.post('/event/add', eventValidation.createEvent, userController.createEvent)
@@ -48,7 +52,7 @@ router.post('/event/apply', eventValidation.applyToEvent, userController.apply)
 router.delete('/event/withdraw/:id',eventValidation.by_event_id, userController.withdraw)
 router.post('/event/volunteers/get', userController.getVolunteerByEvent)
 router.put('/event/volunteers/add', userController.addVolunteerToEvent)
-router.patch('/event/volunteers/request', eventValidation.updateEvent, userController.updateVolunteers)
+router.patch('/event/volunteers/request', eventValidation.update_volunteer_request_status, userController.updateVolunteers)
 
 //  -------  Volunteers  -------
 router.get('/volunteers', userValidation.checkWorkSpaceId, userController.getVolunteers)
@@ -58,8 +62,8 @@ router.post('/volunteer/add', userValidation.userSignUp, userController.addVolun
 router.get('/unverified/volunteers', userValidation.checkWorkSpaceId, userController.getUnverifiedVolunteers)
 
 //  -------  Attendance  --------
-router.patch('/attendance/checkin', eventValidation.updateEvent, userController.volunteerCheckIn)
-router.patch('/attendance/checkout', eventValidation.updateEvent, userController.volunteerCheckOut)
+router.patch('/attendance/checkin', eventValidation.checkInOutEvent, userController.volunteerCheckIn)
+router.patch('/attendance/checkout', eventValidation.checkInOutEvent, userController.volunteerCheckOut)
 
 //  -------  Meet Our Team  --------
 router.get('/meetOurTeams', userController.getOurTeam)

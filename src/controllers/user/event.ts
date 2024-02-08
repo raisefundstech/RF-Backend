@@ -4,32 +4,131 @@ import { apiResponse } from '../../common'
 import { Request, Response } from 'express'
 import { responseMessage } from '../../helpers'
 import { 
-    volunteerInfoByEvent, applyOnEvent, withdrawFromEvent, getEventInfo, fetchAdminsAndSuperVolunteers, updateVolunteersRequestStatus,
-    updateVolunteersCheckInStatus, updateVolunteersCheckOutStatus
-} from '../../helpers/eventQueries'
+    volunteerInfoByEvent, 
+    applyOnEvent, 
+    withdrawFromEvent,  
+    fetchAdminsAndSuperVolunteers, 
+    updateVolunteersRequestStatus,
+    updateVolunteersCheckInStatus, 
+    updateVolunteersCheckOutStatus, 
+    checkEventCreationTime, 
+    userUpdated, 
+    getStadiumDetails,
+    addStadiumDetails
+} from '../../helpers/eventQueries';
 import { eventModel, roomModel, userModel } from '../../database'
 import { getUser } from '../../helpers/userQueries'
 import { pushUserEventRecord } from '../../helpers/statsQueries'
 import { timeDifferences } from '../../helpers/timeDifference'
 import { workSpaceModel } from '../../database/models/workSpace'
+import { getStadiumDetailsByWorkSpace } from '../../helpers/workSpaceQueries'
 import { sendNotification, fetchUserTokens, mapTokensToUser } from '../../helpers/notification'
 
 const ObjectId = require('mongoose').Types.ObjectId
+const moment = require('moment-timezone');
 
-// Fetch all the events based on the workspace provided 
-export const getEvents = async (req: Request, res: Response) => {
-
+// Fetch my events based on the user
+/**
+ * Retrieves events associated with the current user.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response with the retrieved events or an error message.
+ */
+export const getMyEvents = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any
-
-    // Allow Admins and super volunteers to view events across all workspaces and volunteers to view events in their workspace
-    let userWorkSpace = await userModel.findOne({ _id: ObjectId(user._id) }, { workSpaceId: 1 });
-    let workSpaceId = userWorkSpace?.workSpaceId;
-    if(user.type === 1 || user.type === 2) {
-        workSpaceId = req?.params?.id;
+    try {
+        console.log(user)
+        response = await eventModel.aggregate([
+            {
+              $match: {
+                volunteerRequest: {
+                  $elemMatch: { volunteerId: ObjectId(user._id) },
+                },
+                isActive: true,
+              },
+            },
+            { $sort: { startTime: -1 } },
+            {
+              $project: {
+                name: 1,
+                workSpaceId: 1,
+                stadiumId: 1,
+                date: 1,
+                startTime: 1,
+                endTime: 1,
+                volunteerSize: 1,
+                notes: 1,
+                isActive: 1,
+                rfCoins: 1,
+                requestStatus: {
+                  $let: {
+                    vars: {
+                      requestStatuses: {
+                        $map: {
+                          input: {
+                            $filter: {
+                              input: "$volunteerRequest",
+                              as: "volunteer",
+                              cond: {
+                                $eq: [
+                                  "$$volunteer.volunteerId",
+                                  ObjectId(user._id),
+                                ],
+                              },
+                            },
+                          },
+                          as: "volunteer",
+                          in: "$$volunteer.requestStatus",
+                        },
+                      },
+                    },
+                    in: {
+                      $cond: {
+                        if: { $eq: [{ $size: "$$requestStatuses" }, 1] },
+                        then: { $arrayElemAt: ["$$requestStatuses", 0] },
+                        else: "$$requestStatuses",
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            {
+              $sort: {
+                createdAt: -1,
+              },
+            },
+        ]);
+        let stadiumResponse: any = await addStadiumDetails(response);
+        // logger.info(response);
+        if (response?.length > 0) return res.status(200).json(new apiResponse(200, responseMessage.getDataSuccess('events'), stadiumResponse))
+        else return res.status(404).json(new apiResponse(404, responseMessage.getDataNotFound('events'), {}))
+    } catch (error) {
+        return res.status(500).json(new apiResponse(500, responseMessage?.customMessage(error), error));
     }
+}
 
-    if(userWorkSpace?.workSpaceId == null) return res.status(400).json(new apiResponse(400, "Please select a valid workspace from your profile and try again.", {}))
+// Fetch all the events based on the workspace provided 
+/**
+ * Retrieves events based on the user's workspace and access level.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns The response with the retrieved events or an error message.
+ */
+export const getEvents = async (req: Request, res: Response) => {
+    reqInfo(req);
+    let user: any = req.header('user');
+    let response: any;
+    // Allow Admins and super volunteers to view events across all workspaces and volunteers to view events in their workspace
+    let userWorkSpace = await userModel.findOne({ _id: ObjectId(user._id) }, { workSpaceId: 1, userType: 1 });
+    let workSpaceId = userWorkSpace?.workSpaceId.toString();
+
+    if (workSpaceId == null) {
+        return res.status(400).json(new apiResponse(400, "Please provide a valid workspaceid and try again", {}));
+    }
 
     try {
         response = await eventModel.aggregate([
@@ -37,22 +136,42 @@ export const getEvents = async (req: Request, res: Response) => {
             { $sort: { startTime: -1 } },
             {
                 $project: {
-                    workSpaceId: 1,
                     name: 1,
-                    address: 1,
+                    workSpaceId: 1,
                     date: 1,
+                    stadiumId: 1,
                     startTime: 1,
                     endTime: 1,
                     volunteerSize: 1,
                     notes: 1,
                     isActive: 1,
                     createdBy: 1,
-                    volunteerRequest: {
-                        $filter: {
-                            input: "$volunteerRequest",
-                            as: "volunteer",
-                            cond: {
-                                $eq: ["$$volunteer.volunteerId", ObjectId(user._id)]
+                    rfCoins: 1,
+                    requestStatus: {
+                        $let: {
+                            vars: {
+                                requestStatuses: {
+                                    $map: {
+                                        input: {
+                                            $filter: {
+                                                input: "$volunteerRequest",
+                                                as: "volunteer",
+                                                cond: {
+                                                    $eq: ["$$volunteer.volunteerId", ObjectId(user._id)]
+                                                }
+                                            }
+                                        },
+                                        as: "volunteer",
+                                        in: "$$volunteer.requestStatus"
+                                    }
+                                }
+                            },
+                            in: {
+                                $cond: {
+                                    if: { $eq: [{ $size: "$$requestStatuses" }, 1] },
+                                    then: { $arrayElemAt: ["$$requestStatuses", 0] },
+                                    else: "NEW"
+                                }
                             }
                         }
                     },
@@ -67,45 +186,64 @@ export const getEvents = async (req: Request, res: Response) => {
                 }
             }
         ]);
-        // console.timeEnd('mongoconntime');
-        if (response?.length > 0) return res.status(200).json(new apiResponse(200, responseMessage.getDataSuccess('events'), response))
-        else return res.status(404).json(new apiResponse(404, responseMessage.getDataNotFound('events'), {}))
+        let stadiumResponse: any = await addStadiumDetails(response);
+        if (response?.length > 0) {
+            return res.status(200).json(new apiResponse(200, responseMessage.getDataSuccess('events'), stadiumResponse));
+        } else {
+            return res.status(404).json(new apiResponse(404, responseMessage.getDataNotFound('events'), {}));
+        }
     } catch (error) {
-        // console.log(error);
         return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, error));
     }
 }
 
+/**
+ * Creates a new event.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns The response with the created event or an error message.
+ */
 export const createEvent = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any, body = req.body
-    try {
-
+    try {    
         body.createdBy = user?._id;
         let userInfo = await getUser(user?._id, true);
-        logger.info(userInfo?.length);
-
-        if(userInfo[0]?.userType === 0 || userInfo[0]?.userType === 2 || userInfo[0]?.userType > 2) {
+        logger.info(userInfo?.userType);
+        if(userInfo?.userType != 1) { 
             return res.status(400).json(new apiResponse(400, "You are not authorized to create event.", {}));
         }
 
-        if (new Date(body.startTime) < new Date() || new Date(body.endTime) < new Date() || new Date(body.startTime).toString() == new Date(body.endTime).toString()) return res.status(400).json(new apiResponse(400, "Invalid start time or end time!", {}))
+        let eventCreationResponse = await checkEventCreationTime(req);
+
+        if(eventCreationResponse?.error){
+            throw new Error(eventCreationResponse.error);
+        }
+        
         if (body.volunteerSize < 2) return res.status(400).json(new apiResponse(400, "Please add volunteer size more than 1 . ", {}))
 
-        let validWorkSpace = await workSpaceModel.findOne({ _id: ObjectId(body?.workSpaceId), isActive: true });
+        let validWorkSpace = await workSpaceModel.findOne({ 
+            _id: ObjectId(body?.workSpaceId), 
+            stadiums: { $elemMatch: { _id: ObjectId(body?.stadiumId) } },
+            isActive: true
+        });
 
         if(validWorkSpace == null) {
-            return res.status(400).json(new apiResponse(400, "Invalid workspace id. Please provide valid workspace id.", {}));
+            return res.status(400).json(new apiResponse(400, "Invalid workspace or stadium ID provided. Please provide valid IDs.", {}));
         }
 
         response = await new eventModel(body).save();
+
         if (response) {
             let userData = await userModel.find({ userType: 0, isActive: true, workSpaceId: response?.workSpaceId }, { firstName: 1, lastName: 1, device_token: 1 });
             logger.info(userData?.length);
             let title = `New event created`;
             const date = new Date(body.date);
+            const eventDetails = await getStadiumDetailsByWorkSpace(response?.workSpaceId, response?.stadiumId);
             const formattedDate = date.toLocaleString('en-US', { month: 'short', day: '2-digit' });
-            let message = `Hello! We have an exciting new event coming up: ${body?.name} on ${formattedDate}. Don't miss out on this opportunity to make a difference. Apply now and be part of something meaningful. Thank you!`;
+            let message = `New event coming up: ${eventDetails?.name} on ${formattedDate}.`;
+            logger.info(message);
             const updatePromises = userData.map(async (data: any) => {
                 const tokens: string[] = data?.device_token;
                 const userTokenMapper = mapTokensToUser(data?._id, tokens);
@@ -128,33 +266,56 @@ export const createEvent = async (req: Request, res: Response) => {
     }
 }
 
+/**
+ * Updates an event.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns The updated event or an error response.
+ */
 export const updateEvent = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any, body = req.body;
     try {
         body.updatedBy = user?._id;
-        // only admin and super volunteer can update the event
+        // only admin can update the event
         if (body.startTime || body.endTime) {
             if (new Date(body.startTime) < new Date() || new Date(body.endTime) < new Date() || new Date(body.startTime).toString() == new Date(body.endTime).toString()) return res.status(400).json(new apiResponse(400, "Invalid start time or end time!", {}))
         }
         if (body.volunteerSize) {
             if (body.volunteerSize < 2) return res.status(400).json(new apiResponse(400, "Please add volunteer size more than 1 . ", {}))
         }
+        let validWorkSpace = await workSpaceModel.findOne({ 
+            _id: ObjectId(body?.workSpaceId), 
+            stadiums: { $elemMatch: { _id: ObjectId(body?.stadiumId) } },
+            isActive: true
+        });
+
+        if(validWorkSpace == null) {
+            return res.status(400).json(new apiResponse(400, "Invalid workspace or stadium ID provided. Please provide valid IDs.", {}));
+        }
         let userAuthority = await userModel.findOne({ _id: ObjectId(user?._id) }, { userType: 1 });
-        if(userAuthority?.userType === 0 || userAuthority?.userType == 2 || userAuthority?.userType > 2){
+        if(userAuthority?.userType != 1){
             throw new Error("You are not authorized to update event.");
         }
-        response = await eventModel.findOneAndUpdate({ _id: ObjectId(body.id), isActive: true }, body, { new: true });
+        response = await eventModel.findOneAndUpdate({ _id: ObjectId(body._id), isActive: true }, body, { new: true });
         if (response) {
             let updateRoomName = await roomModel.findOneAndUpdate({ eventId: ObjectId(response?._id), isActive: true }, { roomName: response?.name + " " + "group" })
             return res.status(200).json(new apiResponse(200, responseMessage.updateDataSuccess('event'), {}))
         }
         else return res.status(400).json(new apiResponse(400, responseMessage.updateDataError('event'), {}))
     } catch (error) {
-        return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, error));
+        return res.status(500).json(new apiResponse(500, responseMessage?.customMessage(error), error));
     }
 }
 
+/**
+ * Retrieves an event by its ID.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response with the event data if found, or an error response if not found or an error occurred.
+ */
 export const getEventById = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any
@@ -162,9 +323,16 @@ export const getEventById = async (req: Request, res: Response) => {
     try {
         const pipeline = await volunteerInfoByEvent(req, user);
         response = await eventModel.aggregate(pipeline);
+        const stadiumInfo: any = await getStadiumDetails(req?.params?.id);
+        // Inject stadium details into the response
+        response[0].stadiumName = stadiumInfo?.[0]?.name;
+        response[0].stadiumAddress = stadiumInfo?.[0]?.address;
+        response[0].stadiumPolicy = stadiumInfo?.[0]?.stadiumPolicy;
+        response[0].latitude = stadiumInfo?.[0]?.latitude;
+        response[0].longitude = stadiumInfo?.[0]?.longitude;
         // If the userStatus represent the user is a volunteer delete the volunteerRequest from the response
         if(userStatus?.userType === 0){
-            delete response[0]?.volunteerRequest;
+            response[0].volunteerRequest = response[0]?.volunteerRequest.filter((data: any) => data?.volunteerId?.toString() === user?._id?.toString());
         }
         if (response) return res.status(200).json(new apiResponse(200, responseMessage.getDataSuccess('event'), response[0]))
         else return res.status(400).json(new apiResponse(400, responseMessage.getDataNotFound('event'), {}))
@@ -173,12 +341,19 @@ export const getEventById = async (req: Request, res: Response) => {
     }
 }
 
+/**
+ * Deletes an event.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response indicating the status of the deletion.
+ */
 export const deleteEvent = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any
     try {
         let userAuthority = await getUser(user?._id, true);
-        if (userAuthority[0]?.userType === 0 || userAuthority[0]?.userType === 2 || userAuthority[0]?.userType > 2) {
+        if (userAuthority?.userType != 1) {
             throw new Error("You are not authorized to delete event.");
         }
         response = await eventModel.findOneAndUpdate({ _id: ObjectId(req.params.id), isActive: true, startTime: { $gte: new Date() } }, { isActive: false });
@@ -189,6 +364,13 @@ export const deleteEvent = async (req: Request, res: Response) => {
     }
 }
 
+/**
+ * Retrieves paginated event data based on the provided request parameters.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns The paginated event data along with pagination information.
+ */
 export const get_event_pagination = async (req: Request, res: Response) => {
     reqInfo(req)
     let { workSpaceId, search, page, limit } = req.body, event_data: any, match: any = {}, event_count: any
@@ -289,28 +471,38 @@ export const get_event_pagination = async (req: Request, res: Response) => {
     }
 }
 
-// task: minimize the function code for apply witddraw and updateVolunteers to reduce code duplication
-// requires workspaceId for this 
+
+/**
+ * Applies for an event.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response indicating the success or failure of the application.
+ */
 export const apply = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any, body = req.body, match: any = {}, findUser: any
     try {
-        let getUserWorkSpace = await userModel.findOne({ _id: ObjectId(user._id) }, { workSpaceId: 1 });
-
-        if(getUserWorkSpace?.workSpaceId != body.workSpaceId){
+        let getUser = await userModel.findOne({ _id: ObjectId(user._id) }, { workSpaceId: 1, userStatus: 1, userType: 1 });
+        
+        if(getUser?.workSpaceId != body.workSpaceId) {
             throw new Error("You can't apply to an event located in different workstation, please switch the workstation and try again.");
         }
 
+        if(getUser?.userStatus != 1) {
+            throw new Error("You are not authorized to apply for an event, please contact your admin.");
+        }
+
         const result = await applyOnEvent(req,user?._id);
-        // logger.info(result);
 
         if(result?.error){
-            throw new Error(result.error);
+            return res.status(409).json(new apiResponse(409, result.error, {}));
         }
 
         response = await fetchAdminsAndSuperVolunteers(body?.workSpaceId)
-        // logger.info(response);
-
+        var getEvent = await eventModel.findOne({ _id: ObjectId(body._id), isActive: true })
+        const eventDetails = await getStadiumDetailsByWorkSpace(getEvent?.workSpaceId, getEvent?.stadiumId);
+        
         if(response?.error){
             throw new Error(result.error);
         }
@@ -319,17 +511,18 @@ export const apply = async (req: Request, res: Response) => {
             const userTokenMapper = mapTokensToUser(data?._id, tokens);
 
             const findUser = await userModel.findOne({ _id: ObjectId(user?._id)});
-            const date = new Date(body.date);
+            const date = new Date();
             const formattedDate = date.toLocaleString('en-US', { month: 'short', day: '2-digit' });
 
             const payload = {
-                title: `Apply on event`,
-                message: `Hello, ${findUser?.firstName} ${(findUser?.lastName)} has applied to this event name ${body.name} on ${formattedDate}. please approve or declined the user participation.`,
-                data: {
-                    type: 1,
-                    eventId: result?._clsid
-                }
+              title: `Applied for ${result.name}`,
+              message: `${findUser?.firstName} ${findUser?.lastName} (${findUser.volunteerId}), Applied ${eventDetails?.name} event on ${formattedDate}.`,
+              data: {
+                type: 1,
+                eventId: result?._clsid,
+              },
             };
+            logger.info(payload);
             sendNotification(tokens, userTokenMapper, payload);
         });
         // Wait for all promises to complete
@@ -340,6 +533,14 @@ export const apply = async (req: Request, res: Response) => {
     }
 }
 
+
+/**
+ * Withdraws a user from an event.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response indicating the success or failure of the withdrawal.
+ */
 export const withdraw = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any, body = req.body
@@ -348,8 +549,11 @@ export const withdraw = async (req: Request, res: Response) => {
         if(result?.error){
             throw new Error(result.error);
         }
-        let userWorkSpace = getUser(user?._id, true);
-        response = await fetchAdminsAndSuperVolunteers(userWorkSpace[0]?.workSpaceId)
+        let userWorkSpace = await getUser(user?._id, true).then(data => data?.workSpaceId);
+        var getEvent = await eventModel.findOne({ _id: ObjectId(req?.params?.id), isActive: true })
+        const eventDetails = await getStadiumDetailsByWorkSpace(getEvent?.workSpaceId, getEvent?.stadiumId);
+
+        response = await fetchAdminsAndSuperVolunteers(userWorkSpace);
         if(response?.error) {
             throw new Error(result.error);
         }
@@ -358,17 +562,18 @@ export const withdraw = async (req: Request, res: Response) => {
             const userTokenMapper = mapTokensToUser(data?._id, tokens);
 
             const findUser = await userModel.findOne({ _id: ObjectId(user?._id)});
-            const date = new Date(body.date);
+            const date = new Date(new Date());
             const formattedDate = date.toLocaleString('en-US', { month: 'short', day: '2-digit' });
 
             const payload = {
-                title: `Apply on event`,
-                message: `Hello, ${findUser?.firstName} ${(findUser?.lastName)} has withdrawn from the ${body.name} event coducted on ${formattedDate}.`,
-                data: {
-                    type: 1,
-                    eventId: result?._id
-                }
+              title: `Withdrawn from ${result.name}`,
+              message: `${findUser?.firstName} ${findUser?.lastName} (${findUser?.volunteerId}), Withdrawn from ${eventDetails?.name} event on ${formattedDate}.`,
+              data: {
+                type: 1,
+                eventId: result?._id,
+              },
             };
+            logger.info(payload);
             sendNotification(tokens, userTokenMapper, payload);
         });
         // Wait for all promises to complete
@@ -379,6 +584,15 @@ export const withdraw = async (req: Request, res: Response) => {
     }
 }
 
+
+/**
+ * Updates the volunteers' request status for an event.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response indicating the status of the update operation.
+ * @throws If the user is not authorized to update volunteer request status, or if the request data is invalid.
+ */
 export const updateVolunteers = async (req: Request, res: Response) => {
     reqInfo(req);
     try {
@@ -387,8 +601,8 @@ export const updateVolunteers = async (req: Request, res: Response) => {
 
         let userAuthority = await userModel.findOne({ _id: ObjectId(user?._id) }, { userType: 1 });
 
-        if(userAuthority?.userType === 0 || userAuthority?.userType > 2){
-            throw new Error("You are not authorized to update event status.");
+        if(userAuthority?.userType != 1 && userAuthority?.userType != 2){
+            throw new Error("You are not authorized to update volunteer request status.");
         }
 
         var requestStatus = req.body?.volunteerRequest;
@@ -397,15 +611,17 @@ export const updateVolunteers = async (req: Request, res: Response) => {
             return res.status(400).json(new apiResponse(400, "Invalid request. Please provide valid data.", {}));
         }
 
-        var getEvent = await eventModel.findOne({ _id: ObjectId(body.id), isActive: true })
+        var getEvent = await eventModel.findOne({ _id: ObjectId(body._id), isActive: true })
         logger.info(getEvent?._id);
+        const eventDetails = await getStadiumDetailsByWorkSpace(getEvent?.workSpaceId, getEvent?.stadiumId);
 
         if (getEvent == null) {
             return res.status(400).json(new apiResponse(400, "Invalid event id. Please provide valid event id.", {}));
         }
 
         let responseData = getEvent?.volunteerRequest?.filter(data => data?.requestStatus === "APPROVED");
-        if (getEvent?.volunteerSize < (responseData?.length + body?.volunteerRequest?.length)) {
+        let approvedVolunteersInBody = body?.volunteerRequest?.filter(data => data?.requestStatus === "APPROVED");
+        if (getEvent?.volunteerSize < (responseData?.length + approvedVolunteersInBody?.length)) {
             return res.status(400).json(new apiResponse(400, `The current request exceeds the limit of available volunteer slots. You can only approve volunteers within the limit of ${getEvent?.volunteerSize}.`, {}))
         }
         
@@ -422,17 +638,18 @@ export const updateVolunteers = async (req: Request, res: Response) => {
 
             if (tokens?.length > 0) {
                 userTokenMapper = mapTokensToUser(data?.volunteerId, tokens);
-                let date = await getEventInfo(body?.id);
+                let date = getEvent?.date;
                 const formattedDate = date?.toLocaleString('en-US', { month: 'short', day: '2-digit' });
                 let userInfo = await getUser(data?.volunteerId, true); 
                 payload = {
                     title: `Event request ${data?.requestStatus}`,
-                    message: `Hello, ${userInfo?.[0]?.firstName} your event request has been ${body?.requestStatus} for the ${date?.name} on ${formattedDate}.`,
+                    message: `Hello, ${userInfo?.firstName} your event request has been ${body?.requestStatus} for the ${eventDetails?.name} on ${formattedDate}.`,
                     data: {
                         type: 1,
-                        eventId: body.id
+                        eventId: body._id
                     }
                 };
+                logger.info(payload);
                 sendNotification(tokens, userTokenMapper, payload);
             }
             else{
@@ -448,6 +665,12 @@ export const updateVolunteers = async (req: Request, res: Response) => {
 };
 
 
+/**
+ * Retrieves paginated event data for volunteers based on the provided request parameters.
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns The response with paginated event data and pagination information.
+ */
 export const get_event_pagination_for_volunteers = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user')
@@ -512,6 +735,12 @@ export const get_event_pagination_for_volunteers = async (req: Request, res: Res
     }
 }
 
+/**
+ * Retrieves volunteers associated with a specific event.
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response with the volunteer data.
+ */
 export const getVolunteerByEvent = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any, body = req.body, match = []
@@ -603,12 +832,19 @@ export const getVolunteerByEvent = async (req: Request, res: Response) => {
     }
 }
 
+/**
+ * Adds a volunteer to an event.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response indicating the success or failure of adding volunteers to the event.
+ */
 export const addVolunteerToEvent = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any, body = req.body;
     try {
         response = await eventModel.findOneAndUpdate({
-            _id: ObjectId(body.id),
+            _id: ObjectId(body._id),
             isActive: true
         }, {
             $push: {
@@ -623,8 +859,6 @@ export const addVolunteerToEvent = async (req: Request, res: Response) => {
     }
 }
 
-// In the body I require eventId, volunteerId and chekin status
-
 /**
  * Handles the check-in process for volunteers attending an event.
  * 
@@ -638,37 +872,40 @@ export const volunteerCheckIn = async (req: Request, res: Response) => {
     try {
         // Check user authority
         let userAuthority = await userModel.findOne({ _id: ObjectId(user?._id) }, { userType: 1 });
-        if(userAuthority?.userType === 0 || userAuthority?.userType > 2){
+        if(userAuthority?.userType != 1 && userAuthority?.userType != 2){
             throw new Error("You are not authorized to update event status.");
         }
 
         // Check request status
         var requestStatus = req.body?.volunteerRequest;
-        if (requestStatus == null || requestStatus.length === 0 || body?.startTime == null) {
-            return res.status(400).json(new apiResponse(400, "Invalid request. Please provide valid data.", {}));
+        if (requestStatus == null || requestStatus.length === 0) {
+            return res.status(400).json(new apiResponse(400, "Invalid request. Please provide VolunteerRequest data.", {}));
         }
 
         // Check check-in time, admin can mark attendance 3 hours before the event or 1 hour after the event
-        const eventStartTime = new Date(body?.startTime);
-        const currentTime = new Date();
-        const threeHoursBeforeEvent = new Date(eventStartTime.getTime() - (3 * 60 * 60 * 1000));
-        const formattedBefore = threeHoursBeforeEvent.toLocaleString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true });
-        const oneHourAfterEvent = new Date(eventStartTime.getTime() + (1 * 60 * 60 * 1000));
-        const formattedAfter = oneHourAfterEvent.toLocaleString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true });
+        // Currently commented out as per the discussion with the team
+        // const eventStartTimeUTC = moment.utc(body?.startTime);
+        // const currentTimeUTC = new Date();
+        // const threeHoursBeforeEventUTC = eventStartTimeUTC.clone().subtract(3, 'hours');
+        // const formattedBefore = threeHoursBeforeEventUTC.format('h:mm A');
+        // const oneHourAfterEventUTC = eventStartTimeUTC.clone().add(1, 'hour');
+        // const formattedAfter = oneHourAfterEventUTC.format('h:mm A');
 
-        if (currentTime < threeHoursBeforeEvent || currentTime > oneHourAfterEvent) {
-            var messgae = `Invalid check-in time. Check-in starts from ${formattedBefore} and ends at ${formattedAfter}`
-            return res.status(400).json(new apiResponse(400, messgae, {}));
-        }
+        // if (currentTimeUTC < threeHoursBeforeEventUTC || currentTimeUTC > oneHourAfterEventUTC) {
+        //     var messgae = `Invalid check-in time. Check-in starts from ${formattedBefore} and ends at ${formattedAfter}`
+        //     return res.status(400).json(new apiResponse(400, messgae, {}));
+        // }
+
         // Update check-in status for each volunteer
         const volunteersCheckInStatus = body?.volunteerRequest.map(async (data: any) => {
-            response = await updateVolunteersCheckInStatus(body?.id, data?.volunteerId);
+            response = await updateVolunteersCheckInStatus(body?._id, data?.volunteerId);
             if (response?.error) {
                 throw new Error(response.error);
             }
         });
         // Wait for all promises to complete
         await Promise.all(volunteersCheckInStatus);
+        await userUpdated(body?._id,user?._id);
         return res.status(200).json(new apiResponse(200, "Volunteers checkedIn status has been updated successfully", {}));
     } catch (error) {
         return res.status(500).json(new apiResponse(500, responseMessage?.customMessage(error), {}));
@@ -688,31 +925,39 @@ export const volunteerCheckOut = async (req: Request, res: Response) => {
     try {
         // Check user authority
         let userAuthority = await userModel.findOne({ _id: ObjectId(user?._id) }, { userType: 1, firstName: 1, lastName: 1 });
-        if(userAuthority?.userType === 0 || userAuthority?.userType > 2){
+        if(userAuthority?.userType != 1 && userAuthority?.userType != 2){
             throw new Error("You are not authorized to update event status.");
         }
         // Check request status
         var requestStatus = req.body?.volunteerRequest;
-        if (requestStatus == null || requestStatus.length === 0 || body?.endTime == null) {
-            return res.status(400).json(new apiResponse(400, "Invalid request. Please provide valid data.", {}));
+        if (requestStatus == null || requestStatus.length === 0) {
+            return res.status(400).json(new apiResponse(400, "Invalid request. Please provide VolunteerRequest data.", {}));
         }
-        // Check check-out time, admin can mark attendance 2 hours before the event or 2 hour after the event
-        const eventStartTime = new Date(body?.endTime);
-        const currentTime = new Date();
-        const twoHoursBeforeEvent = new Date(eventStartTime.getTime() - (2 * 60 * 60 * 1000));
-        const formattedBefore = twoHoursBeforeEvent.toLocaleString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true });
-        const twoHoursAfterEvent = new Date(eventStartTime.getTime() + (1 * 60 * 60 * 1000));
-        const formattedAfter = twoHoursAfterEvent.toLocaleString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true });
+        // check if the volunteer has checked-in first
 
-        if (currentTime < twoHoursAfterEvent || currentTime > twoHoursAfterEvent) {
-            var messgae = `Invalid check-out time. Check-in starts from ${formattedBefore} and ends at ${formattedAfter}`
-            return res.status(400).json(new apiResponse(400, messgae, {}));
-        }
+        // Check check-out time, admin can mark attendance 2 hours before the event or 2 hour after the event
+        // currently suspending the check-out time validation
+        // const eventStartTime = new Date(body?.endTime);
+        // const currentTime = new Date();
+        // const twoHoursBeforeEvent = new Date(eventStartTime.getTime() - (2 * 60 * 60 * 1000));
+        // const formattedBefore = twoHoursBeforeEvent.toLocaleString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true });
+        // const twoHoursAfterEvent = new Date(eventStartTime.getTime() + (1 * 60 * 60 * 1000));
+        // const formattedAfter = twoHoursAfterEvent.toLocaleString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true });
+
+        // if (currentTime < twoHoursAfterEvent || currentTime > twoHoursAfterEvent) {
+        //     var messgae = `Invalid check-out time. Check-in starts from ${formattedBefore} and ends at ${formattedAfter}`
+        //     return res.status(400).json(new apiResponse(400, messgae, {}));
+        // }
+
+        // fetch event information
+        const eventInfo = await eventModel.findOne({ _id: ObjectId(body?._id), isActive: true });
+        const stadiumInfo = await getStadiumDetailsByWorkSpace(eventInfo?.workSpaceId, eventInfo?.stadiumId);
+
         // Update check-in status for each volunteer
         const volunteersCheckOutStatus = body?.volunteerRequest.map(async (data: any) => {
             
             // update user attendance in attendance table
-            response = await updateVolunteersCheckOutStatus(body?.id, data?.volunteerId);
+            response = await updateVolunteersCheckOutStatus(body?._id, data?.volunteerId);
 
             if (response?.error) {
                 throw new Error(response?.error);
@@ -721,10 +966,11 @@ export const volunteerCheckOut = async (req: Request, res: Response) => {
             // update user attended stats information into stats table
             let userEventData = {
                 "volunteerId": data?.volunteerId,
-                "rfCoins": data?.rfCoins,
-                "eventId" : data?._id,
-                "workSpaceId" : user?.workSpaceId
+                "rfCoins": eventInfo?.rfCoins,
+                "eventId" : eventInfo?._id,
+                "workSpaceId" : eventInfo?.workSpaceId
             }
+
             response = await pushUserEventRecord(userEventData);
 
             if (response?.error) {
@@ -742,12 +988,13 @@ export const volunteerCheckOut = async (req: Request, res: Response) => {
 
                 let payload = {
                     title: `Attendance marked`,
-                    message: `Hello, ${userInfo?.firstName}, your attendance has been marked for the ${body?.name} event on ${formattedDate} by ${userAuthority?.firstName}.`,
+                    message: `Hello, ${userInfo?.firstName}, your attendance has been marked for the ${stadiumInfo?.name} event on ${formattedDate} by ${userAuthority?.firstName}.`,
                     data: {
                         type: 1,
-                        eventId: body.id
+                        eventId: body._id
                     }
                 };
+                logger.info(payload);
                 sendNotification(userInfo?.device_token, userTokenMapper, payload);
             } else {
                 console.log("User has not allowed the notifications or unable to send notifications.");
@@ -755,6 +1002,7 @@ export const volunteerCheckOut = async (req: Request, res: Response) => {
         });
         // Wait for all promises to complete
         await Promise.all(volunteersCheckOutStatus);
+        await userUpdated(body?._id,user?._id);
         return res.status(200).json(new apiResponse(200, "Volunteers attendance has been updated successfully", {}));
     } catch (error) {
         return res.status(500).json(new apiResponse(500, responseMessage?.customMessage(error), {}));

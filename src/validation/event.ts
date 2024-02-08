@@ -6,17 +6,16 @@ import { responseMessage } from '../helpers';
 
 export const createEvent = async (req: Request, res: Response, next: any) => {
     const schema = Joi.object({
-        workSpaceId: Joi.string().trim().required().error(new Error('workSpaceId is required!')),
         name: Joi.string().trim().required().error(new Error('name is required!')),
-        address: Joi.string().trim().required().error(new Error('address is required!')),
-        latitude: Joi.number().allow(null).error(new Error('latitude is number!')),
-        longitude: Joi.number().allow(null).error(new Error('longitude is number!')),
+        workSpaceId: Joi.string().trim().required().error(new Error('workSpaceId is required!')),
+        stadiumId: Joi.string().trim().required().error(new Error('stadiumId is objectId!')),
         date: Joi.string().required().error(new Error('date is required!')),
         startTime: Joi.string().required().error(new Error('startTime is required!')),
         endTime: Joi.string().required().error(new Error('endTime is required!')),
         volunteerSize: Joi.number().required().error(new Error('volunteerSize is required!')),
         notes: Joi.string().allow(null, "").error(new Error('notes is string!')),
-        rfCoins: Joi.number().required().error(new Error('rfCoins is number!'))
+        rfCoins: Joi.number().required().error(new Error('rfCoins is number!')),
+        parkingPassImageURL: Joi.string().allow(null, "").error(new Error('parkingPassImageURL is string!'))
     });
     schema.validateAsync(req.body).then(result => {
         if (!isValidObjectId(result.workSpaceId)) return res.status(400).json(new apiResponse(400, 'invalid workSpaceId', {}));
@@ -29,22 +28,20 @@ export const createEvent = async (req: Request, res: Response, next: any) => {
 
 export const updateEvent = async (req: Request, res: Response, next: any) => {
     const schema = Joi.object({
-        id: Joi.string().trim().required().error(new Error('event id is required!')),
-        workSpaceId: Joi.string().trim().allow(null, "").error(new Error('workSpaceId is objectId!')),
-        name: Joi.string().trim().allow(null, "").error(new Error('name is string!')),
-        address: Joi.string().trim().allow(null, "").error(new Error('address is string!')),
-        latitude: Joi.number().allow(null).error(new Error('latitude is number!')),
-        longitude: Joi.number().allow(null).error(new Error('longitude is number!')),
-        date: Joi.string().trim().allow(null, "").error(new Error('date is string!')),
-        startTime: Joi.string().trim().allow(null, "").error(new Error('startTime is string!')),
-        endTime: Joi.string().trim().allow(null, "").error(new Error('endTime is string!')),
+        _id: Joi.string().trim().required().error(new Error('event id is required!')),
+        name: Joi.string().trim().required().error(new Error('name is string!')),
+        stadiumId: Joi.string().trim().required().error(new Error('stadiumId is required!')),
+        workSpaceId: Joi.string().trim().required().error(new Error('workSpaceId is required!')),
+        date: Joi.string().trim().required().error(new Error('date is string!')),
+        startTime: Joi.string().trim().required().error(new Error('startTime is string!')),
+        endTime: Joi.string().trim().required().error(new Error('endTime is string!')),
         volunteerSize: Joi.number().allow(null).error(new Error('volunteerSize is number!')),
         notes: Joi.string().trim().allow(null, "").error(new Error('notes is string!')),
-        rfCoins: Joi.number().allow(null,"").error(new Error('rfCoins is number!')),
-        volunteerRequest: Joi.array().allow(null,"").default([]).error(new Error('volunteerRequest is array!')),
+        rfCoins: Joi.number().required().error(new Error('rfCoins is number!')),
+        parkingPassImageURL: Joi.string().allow(null, "").error(new Error('parkingPassImageURL is string!'))
     });
     schema.validateAsync(req.body).then(result => {
-        if (!isValidObjectId(result.id)) return res.status(400).json(new apiResponse(400, 'invalid id', {}));
+        if (!isValidObjectId(result._id)) return res.status(400).json(new apiResponse(400, 'invalid id', {}));
         req.body = result;
         return next()
     }).catch(error => {
@@ -52,9 +49,32 @@ export const updateEvent = async (req: Request, res: Response, next: any) => {
     })
 }
 
-export const by_workspace_id = async (req: Request, res: Response, next: any) => {
-    if (!isValidObjectId(req.params.id)) return res.status(400).json(new apiResponse(400, responseMessage.invalidId('workSpaceId'), {}));
-    next()
+export const checkInOutEvent = async (req: Request, res: Response, next: any) => {
+    const schema = Joi.object({
+        _id: Joi.string().trim().required().error(new Error('event id is required!')),
+        volunteerRequest: Joi.array().required().default([]).error(new Error('volunteerRequest is array!')),
+    });
+    schema.validateAsync(req.body).then(result => {
+        if (!isValidObjectId(result._id)) return res.status(400).json(new apiResponse(400, 'invalid id', {}));
+        req.body = result;
+        return next()
+    }).catch(error => {
+        res.status(400).json(new apiResponse(400, error.message, {}))
+    })
+}
+
+export const update_volunteer_request_status = async (req: Request, res: Response, next: any) => {
+    const schema = Joi.object({
+        _id: Joi.string().trim().required().error(new Error('event id is required!')),
+        volunteerRequest: Joi.array().required().default([]).error(new Error('volunteerRequest is array!')),
+    });
+    schema.validateAsync(req.body).then(result => {
+        if (!isValidObjectId(result._id)) return res.status(400).json(new apiResponse(400, 'invalid id', {}));
+        req.body = result;
+        return next()
+    }).catch(error => {
+        res.status(400).json(new apiResponse(400, error.message, {}))
+    })
 }
 
 export const by_event_id = async (req: Request, res: Response, next: any) => {
@@ -64,11 +84,11 @@ export const by_event_id = async (req: Request, res: Response, next: any) => {
 
 export const applyToEvent = async (req: Request, res: Response, next: any) => {
     const schema = Joi.object({
-        id: Joi.string().trim().required().error(new Error('event id is required!')),
+        _id: Joi.string().trim().required().error(new Error('event id is required!')),
         workSpaceId: Joi.string().trim().required().error(new Error('workSpaceId is required!'))
     })
     schema.validateAsync(req.body).then(result => {
-        if (!isValidObjectId(result.id)) return res.status(400).json(new apiResponse(400, 'invalid id', {}));
+        if (!isValidObjectId(result._id)) return res.status(400).json(new apiResponse(400, 'invalid id', {}));
         if (!isValidObjectId(result.workSpaceId)) return res.status(400).json(new apiResponse(400, 'invalid workSpaceId', {}));
         req.body = result;
         return next()
@@ -81,7 +101,7 @@ export const applyToEvent = async (req: Request, res: Response, next: any) => {
 export const changeEventRequestStatus = async (req: Request, res: Response, next: any) => {
     const schema = Joi.array().items(
         Joi.object({
-            id: Joi.string().trim().required().error(new Error('id is required!')),
+            _id: Joi.string().trim().required().error(new Error('id is required!')),
             requestId: Joi.string().trim().required().error(new Error('requestId is required!')),
             requestStatus: Joi.string().trim().required().error(new Error('requestStatus is string!'))
         })
@@ -90,7 +110,7 @@ export const changeEventRequestStatus = async (req: Request, res: Response, next
         const arrayData = Array.isArray(result) ? result : [result];
 
         for (const item of arrayData) {
-            if (!isValidObjectId(item.id)) return res.status(400).json(new apiResponse(400, 'invalid id', {}));
+            if (!isValidObjectId(item._id)) return res.status(400).json(new apiResponse(400, 'invalid id', {}));
             if (!isValidObjectId(item.requestId)) return res.status(400).json(new apiResponse(400, 'invalid requestId', {}));
         }
         req.body = arrayData;
@@ -103,7 +123,7 @@ export const changeEventRequestStatus = async (req: Request, res: Response, next
 export const addEventAttendance = async (req: Request, res: Response, next: any) => {
     const schema = Joi.array().items(
         Joi.object({
-            id: Joi.string().trim().required().error(new Error('id is required!')),
+            _id: Joi.string().trim().required().error(new Error('id is required!')),
             requestId: Joi.string().trim().required().error(new Error('requestId is required!')),
             attendance: Joi.boolean().required().error(new Error('attendance is boolean!'))
         })
@@ -113,9 +133,8 @@ export const addEventAttendance = async (req: Request, res: Response, next: any)
         const arrayData = Array.isArray(result) ? result : [result];
 
         for (const item of arrayData) {
-            if (!isValidObjectId(item.id)) return res.status(400).json(new apiResponse(400, 'invalid id', {}));
+            if (!isValidObjectId(item._id)) return res.status(400).json(new apiResponse(400, 'invalid id', {}));
             if (!isValidObjectId(item.requestId)) return res.status(400).json(new apiResponse(400, 'invalid requestId', {}));
-
         }
         req.body = arrayData;
         return next()

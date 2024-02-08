@@ -1,13 +1,21 @@
-import { reqInfo } from '../../helpers/winston_logger'
-import { apiResponse, userStatus } from '../../common'
+import { reqInfo,logger } from '../../helpers/winston_logger'
+import { apiResponse } from '../../common'
 import { Request, Response } from 'express'
 import { responseMessage } from '../../helpers'
-import { userModel, userSessionModel, workSpaceModel } from '../../database'
+import { userModel, workSpaceModel } from '../../database'
 import { generateVolunteerCode } from '../../helpers/generateCode'
 import { deleteSession } from '../../helpers/jwt'
+import { sendNotification, mapTokensToUser } from '../../helpers/notification'
+import { deleteUserSessions } from '../../helpers/authenticationQueries'
 
 const ObjectId = require('mongoose').Types.ObjectId
 
+/**
+ * Retrieves the user profile.
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns The user profile information or an error response.
+ */
 export const getProfile = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any
@@ -40,8 +48,9 @@ export const getProfile = async (req: Request, res: Response) => {
                     otp: 0,
                     otpExpireTime: 0,
                     device_token: 0,
-                    createdAt: 0,
-                    updatedAt: 0
+                    __v: 0,
+                    latitude:0, 
+                    longitude:0, 
                 }
             }
         ])
@@ -52,12 +61,24 @@ export const getProfile = async (req: Request, res: Response) => {
     }
 }
 
+/**
+ * Updates the user profile.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response indicating the status of the profile update.
+ */
 export const updateProfile = async (req: Request, res: Response) => {
     reqInfo(req)
     let body = req.body, user: any = req.header('user')
     body.updatedBy = user._id
     try {
-        let response = await userModel.findOneAndUpdate({ _id: ObjectId((req.header('user') as any)?._id), isActive: true }, body, { new: true })
+        let response = await userModel.findOneAndUpdate(
+            { _id: ObjectId((req.header('user') as any)?._id), isActive: true },
+            body,
+            { new: true, projection: { otp: 0, otpExpireTime: 0, __v:0, latitude:0, longitude:0, device_token:0 } }
+        )
+        
         if (response) {
             // if (body?.image != response?.image && response.image != null && body?.image != null && body?.image != undefined) {
             //     let [folder_name, image_name] = await URL_decode(response?.image)
@@ -71,6 +92,13 @@ export const updateProfile = async (req: Request, res: Response) => {
     }
 }
 
+/**
+ * Switches the workspace for a user.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response indicating the success or failure of the workspace switch.
+ */
 export const switchWorkSpace = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any, body = req.body;
@@ -90,6 +118,13 @@ export const switchWorkSpace = async (req: Request, res: Response) => {
     }
 }
 
+/**
+ * Retrieves a list of volunteers based on the provided request parameters.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response containing the list of volunteers or an error message.
+ */
 export const getVolunteers = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any, match: any = {}
@@ -101,7 +136,7 @@ export const getVolunteers = async (req: Request, res: Response) => {
         let userAuthority = await userModel.findOne({ _id: ObjectId(user._id), isActive: true },{userType: 1})
         let workSpaceId = getUserWorkSpace?.workSpaceId
         if (userAuthority.userType == 1 || userAuthority.userType == 2) {
-           workSpaceId = req.body?.workSpaceId
+           workSpaceId = req.query?.workSpaceId;
         }
 
         response = await userModel.aggregate([
@@ -109,6 +144,7 @@ export const getVolunteers = async (req: Request, res: Response) => {
                 $match: {
                     workSpaceId: ObjectId(workSpaceId),
                     isActive: true,
+                    userStatus: { $in: [1, 2] }
                 }
             },
             {
@@ -130,7 +166,7 @@ export const getVolunteers = async (req: Request, res: Response) => {
                 name: {
                   $regex: queryname, // "i" makes the regex case-insensitive
                   $options: "i",
-                },
+                }
               },
             },
             {
@@ -155,13 +191,21 @@ export const getVolunteers = async (req: Request, res: Response) => {
     }
 }
 
-// This function is responsible for retrieving the details of a volunteer.
-// It checks the user's permission and returns the volunteer's information if the user is an admin or a super-volunteer.
-// The volunteer ID is required as a parameter in the request.
-// If the volunteer is found, it returns a success response with the volunteer's details.
-// If the volunteer is not found, it returns a not found response.
-// If the user does not have the necessary permission, it returns an unauthorized response.
-// If there is an error during the process, it returns a server error response.
+/**
+ * Retrieves the details of a volunteer.
+ * 
+ * This function checks the user's permission and returns the volunteer's information if the user is an admin or a super-volunteer.
+ * The volunteer ID is required as a parameter in the request.
+ * 
+ * If the volunteer is found, it returns a success response with the volunteer's details.
+ * If the volunteer is not found, it returns a not found response.
+ * If the user does not have the necessary permission, it returns an unauthorized response.
+ * If there is an error during the process, it returns a server error response.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response containing the volunteer's details or an error response.
+ */
 export const getVolunteer = async (req: Request, res: Response) => {
     reqInfo(req)
     const user: any = req.header('user') || '';
@@ -185,24 +229,56 @@ export const getVolunteer = async (req: Request, res: Response) => {
     }
 }
 
+/**
+ * Updates the volunteer position based on the request body.
+ * If the user has admin privileges, it updates the volunteer information and sends a notification to the volunteer.
+ * If the update is successful, it returns a success response.
+ * If the user does not have admin privileges, it returns an error response.
+ * If there is an error during the update process, it returns an error response with the corresponding error message.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response indicating the status of the update operation.
+ */
 export const updateVolunteerPosition = async (req: Request, res: Response) => {
     reqInfo(req)
     let body = req.body, response, user: any = req.header('user');
     let userAuthority = await userModel.findOne({ _id: ObjectId(user._id), isActive: true })
     try {
-        if (userAuthority.userStatus == 1) {
-            response = await userModel.findOneAndUpdate({ _id: ObjectId(body.id), isActive: true }, body, { new: true })
+        if (userAuthority.userType == 1) {
+            response = await userModel.findOneAndUpdate({ _id: ObjectId(body._id), isActive: true }, body, { new: true })
+            if(body?.userStatus == 1) {
+                let userInfo = await userModel.findOne({_id: ObjectId(body?._id),isActive:true})
+                const tokens: string[] = userInfo?.device_token;
+                const userTokenMapper = mapTokensToUser(body?._id, tokens);
+                const payload = {
+                    title: 'Profile Approved',
+                    message: `Congratualtions, your profile has been approved by ${userAuthority?.firstName} ${userAuthority?.lastName} and you can now apply to events!`,
+                    data: {
+                        type: 1,
+                        eventId: response?._id
+                    }
+                };
+                sendNotification(tokens, userTokenMapper, payload);
+            }
         }
         if (response) {
             return res.status(200).json(new apiResponse(200, 'Volunteer information updated successfully!', {}))
         }
-        else return res.status(404).json(new apiResponse(404, 'You need to have admin privilages to update volunteer information', {}))
+        // Have to implement notification functionality after updating volunteer profile by the admin 
+        else return res.status(403).json(new apiResponse(403, 'You need to have admin privileges to update volunteer information', {}))
     } catch (error) {
         return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, error));
     }
 }
 
-// This function is responsible for adding a new volunteer which can be performed by an admin or a super-volunteer.
+/**
+ * Adds a volunteer to the system.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response indicating the success or failure of the operation.
+ */
 export const addVolunteer = async (req: Request, res: Response) => {
     reqInfo(req)
     let body = req.body,
@@ -222,20 +298,38 @@ export const addVolunteer = async (req: Request, res: Response) => {
     }
 }
 
+/**
+ * Deletes a user.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response indicating the success or failure of the operation.
+ */
 export const deleteUser = async (req: Request, res: Response) => {
-    reqInfo(req)
-    let user: any = req.header('user')
+    reqInfo(req);
+    let user: any = req.header('user');
     try {
+        let delete_sessions: any = await deleteUserSessions(user?._id);
+        logger.info(`Deleted user sessions: ${delete_sessions}`);
         let response = await userModel.findOneAndUpdate({ _id: ObjectId(user._id), isActive: true }, { isActive: false });
         if (response) {
-            return res.status(200).json(new apiResponse(200, 'User successfully deleted!', {}))
+            return res.status(200).json(new apiResponse(200, 'User successfully deleted!', {}));
+        } else {
+            return res.status(404).json(new apiResponse(501, responseMessage?.updateDataError('User'), {}));
         }
-        else return res.status(404).json(new apiResponse(501, responseMessage?.updateDataError('User'), {}))
     } catch (error) {
+        logger.error(`Error deleting user: ${error}`);
         return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, error));
     }
 }
 
+/**
+ * Logs out a user.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response indicating the success or failure of the logout operation.
+ */
 export const logoutUser = async (req: Request, res: Response) => {
     reqInfo(req);
     let user: any = req.header('user');
@@ -251,12 +345,26 @@ export const logoutUser = async (req: Request, res: Response) => {
     }      
 }
 
+/**
+ * Retrieves a list of unverified volunteers based on the provided workspace ID.
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response containing the list of unverified volunteers or an error message.
+ */
 export const getUnverifiedVolunteers = async (req: Request, res: Response) => {
     reqInfo(req);
     let user: any = req.header('user');
     let workspaceId = req.query.workSpaceId; // Get workspaceId from query string parameter
     try {
-        const response = await userModel.find({ workSpaceId: ObjectId(workspaceId), isActive: true, userStatus: 0 },{ otp: 0, otpExpireTime: 0, device_token: 0, loginType: 0, createdAt: 0, updatedAt: 0 });
+        let userAuthority = await userModel.findOne({ _id: ObjectId(user._id), isActive: true }, { userType: 1 });
+        if (userAuthority.userType != 1) {
+            return res.status(401).json(new apiResponse(401, responseMessage.deniedPermission, {}));
+        }
+        // Get all unverified volunteers from the database
+        const response = await userModel.find({ workSpaceId: ObjectId(workspaceId), isActive: true, userStatus: 0 },{ 
+            otp: 0, otpExpireTime: 0, device_token: 0, loginType: 0, createdAt: 0, updatedAt: 0,
+            __v:0, latitude:0, longitude:0, isActive:0
+        });
         if (response) {
             return res.status(200).json(new apiResponse(200, responseMessage.getDataSuccess('unverified volunteers'), response));
         } else {

@@ -12,6 +12,7 @@ let connection = mongoose.createConnection(dbUrl,
         // useCreateIndex: true,
         useUnifiedTopology: true,
         // useFindAndModify: false,
+        dbName: 'raise_funds' 
     } as ConnectOptions)
 
 mongoose.connect(
@@ -21,6 +22,7 @@ mongoose.connect(
         // useCreateIndex: true,
         useUnifiedTopology: true,
         // useFindAndModify: false,
+        dbName: 'raise_funds' 
     } as ConnectOptions
 ).then(data => console.log('Database successfully connected')).catch(err => console.log(err))
 

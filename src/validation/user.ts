@@ -4,38 +4,41 @@ import { apiResponse } from '../common'
 import { isValidObjectId } from 'mongoose'
 import { Request, Response } from 'express'
 import { responseMessage } from "../helpers"
+import { logger } from '../helpers/winston_logger'
+
+const userProfileSchema = Joi.object({
+    firstName: Joi.string().trim().required().error(new Error('firstName is required!')),
+    lastName: Joi.string().trim().required().error(new Error('lastName is required!')),
+    gender: Joi.number().required().error(new Error('gender is a number 0 for female 1 for male 2 for other')),
+    mobileNumber: Joi.string().trim().required().error(new Error('mobileNumber is required!')),
+    email: Joi.string().trim().required().error(new Error('email is required!')),
+    address: Joi.string().trim().required().error(new Error('address is required!')),
+    latitude: Joi.number().allow("", null).error(new Error('latitude is number!')),
+    longitude: Joi.number().allow("", null).error(new Error('longitude is number!')),
+    zipCode: Joi.string().trim().required().error(new Error('zipCode is required!')),
+    workSpaceId: Joi.string().trim().required().error(new Error('workSpaceId is required!')),
+    image: Joi.string().trim().allow(null, "").error(new Error('image is string!')),
+    universityName: Joi.string().trim().allow(null, "").error(new Error('universityName is string!')),
+    major: Joi.string().trim().allow(null, "").error(new Error('major is string!')),
+    yearOfEducationCompletion: Joi.string().trim().allow(null, "").error(new Error('yearOfEducationCompletion is string!')),
+    YearOfCameToUSA: Joi.string().trim().allow(null, "").error(new Error('YearOfCameToUSA is string!')),
+    collegeIdCard: Joi.string().allow(null, "").error(new Error('collegeIdCard is string!')),
+    countryOfOrigin: Joi.string().trim().allow(null, "").error(new Error('countryOfOrigin is string!')),
+    isRBSAvailable: Joi.boolean().allow(null).error(new Error('isRBSAvailable is boolean!')),
+    RBSId: Joi.number().allow(null).error(new Error('RBSId is number!')),
+    rbsImage: Joi.string().allow(null, "").error(new Error('image is string!')),
+    city: Joi.string().trim().required().error(new Error('city is string!')),
+    notes: Joi.string().trim().allow(null, "").error(new Error('notes is string!')),
+})
 
 export const userSignUp = async (req: Request, res: Response, next: any) => {
-    const schema = Joi.object({
-        firstName: Joi.string().trim().required().error(new Error('firstName is required!')),
-        lastName: Joi.string().trim().required().error(new Error('lastName is required!')),
-        gender: Joi.number().required().error(new Error('gender is a number 0 for female 1 for male 2 for other')),
-        mobileNumber: Joi.string().trim().required().error(new Error('mobileNumber is required!')),
-        email: Joi.string().trim().required().error(new Error('email is required!')),
-        address: Joi.string().trim().required().error(new Error('address is required!')),
-        latitude: Joi.number().allow("", null).error(new Error('latitude is number!')),
-        longitude: Joi.number().allow("", null).error(new Error('longitude is number!')),
-        zipCode: Joi.string().trim().required().error(new Error('zipCode is required!')),
-        workSpaceId: Joi.string().trim().required().error(new Error('workSpaceId is required!')),
-        image: Joi.string().trim().allow(null, "").error(new Error('image is string!')),
-        userType: Joi.number().allow(null).error(new Error('userType is number!')),
-        userStatus: Joi.number().allow(null).error(new Error('userStatus is number!')),
-        universityName: Joi.string().trim().allow(null, "").error(new Error('universityName is string!')),
-        major: Joi.string().trim().allow(null, "").error(new Error('major is string!')),
-        yearOfEducationCompletion: Joi.string().trim().allow(null, "").error(new Error('yearOfEducationCompletion is string!')),
-        YearOfCameToUSA: Joi.string().trim().allow(null, "").error(new Error('YearOfCameToUSA is string!')),
-        collegeIdCard: Joi.string().trim().allow(null, "").error(new Error('collegeIdCard is string!')),
-        countryOfOrigin: Joi.string().trim().allow(null, "").error(new Error('countryOfOrigin is string!')),
-        isRBSAvailable: Joi.boolean().allow(null).error(new Error('isRBSAvailable is boolean!')),
-        RBSID: Joi.number().allow(null).error(new Error('userType is number!')),
-        rbsImage: Joi.string().trim().allow(null, "").error(new Error('image is string!')),
-        city: Joi.string().trim().allow(null, "").error(new Error('city is string!')),
-    })
+    const schema = userProfileSchema;
     schema.validateAsync(req.body).then(result => {
         if (!isValidObjectId(result.workSpaceId)) return res.status(400).json(new apiResponse(400, responseMessage.invalidId('workSpaceId'), {}));
         req.body = result;
         return next()
     }).catch(error => {
+        logger.error("Validation error:", error);
         res.status(400).json(new apiResponse(400, error.message, {}))
     })
 }
@@ -96,19 +99,35 @@ export const verifyOTP = async (req: Request, res: Response, next: any) => {
         res.status(400).json(new apiResponse(400, error.message, {}));
       });
 };
-  
+
+const volunteerUpdateSchema = Joi.object({
+    _id : Joi.string().trim().required().error(new Error('_id is required!')),
+    firstName: Joi.string().trim().allow(null).error(new Error('firstName is required!')),
+    lastName: Joi.string().trim().allow(null).error(new Error('lastName is required!')),
+    gender: Joi.number().allow(null).error(new Error('gender is a number 0 for female 1 for male 2 for other')),
+    address: Joi.string().trim().allow(null,"").error(new Error('address is required!')),
+    zipCode: Joi.string().trim().allow(null,"").error(new Error('zipCode is required!')),
+    workSpaceId: Joi.string().trim().allow(null,"").error(new Error('workSpaceId is required!')),
+    image: Joi.string().trim().allow(null, "").error(new Error('image is string!')),
+    universityName: Joi.string().trim().allow(null, "").error(new Error('universityName is string!')),
+    major: Joi.string().trim().allow(null, "").error(new Error('major is string!')),
+    yearOfEducationCompletion: Joi.string().trim().allow(null, "").error(new Error('yearOfEducationCompletion is string!')),
+    YearOfCameToUSA: Joi.string().trim().allow(null, "").error(new Error('YearOfCameToUSA is string!')),
+    collegeIdCard: Joi.string().trim().allow(null, "").error(new Error('collegeIdCard is string!')),
+    countryOfOrigin: Joi.string().trim().allow(null, "").error(new Error('countryOfOrigin is string!')),
+    RBSId: Joi.number().allow(null).error(new Error('RBSId is number!')),
+    rbsImage: Joi.string().trim().allow(null, "").error(new Error('image is string!')),
+    city: Joi.string().trim().allow(null, "").error(new Error('city is string!')),
+    isRBSAvailable: Joi.boolean().allow(null).error(new Error('isRBSAvailable is boolean!')),
+    notes: Joi.string().trim().allow(null, "").error(new Error('notes is string!')),
+    userType: Joi.number().allow(null).error(new Error('userType is number!')),
+    userStatus: Joi.number().allow(null).error(new Error('userStatus is number!'))
+})
+
 export const volunteerUpdate = async (req: Request, res: Response, next: any) => {
-    const schema = Joi.object({
-        id: Joi.string().trim().required().error(new Error('id is required!')),
-        userType: Joi.number().allow(null).error(new Error('userType is number!')),
-        tags: Joi.string().allow(null, "").error(new Error('tags is string!')),
-        workSpaceId: Joi.string().trim().required().error(new Error('workSpaceId is string!')),
-        userStatus: Joi.number().allow(null).error(new Error('userStatus is number!')),
-        isActive: Joi.boolean().allow(null).error(new Error('isActive is boolean!')),
-        notes: Joi.string().allow(null, "").error(new Error('notes is string!')),
-    })
+    const schema = volunteerUpdateSchema;
     schema.validateAsync(req.body).then(result => {
-        if (!isValidObjectId(result.id)) return res.status(400).json(new apiResponse(400, responseMessage.invalidId('id'), {}));
+        if (!isValidObjectId(result._id)) return res.status(400).json(new apiResponse(400, responseMessage.invalidId('_id'), {}));
         req.body = result
         return next()
     }).catch(error => {
@@ -127,4 +146,34 @@ export const checkWorkSpaceId = async (req: Request, res: Response, next: any) =
         return res.status(400).json(new apiResponse(400, responseMessage.invalidId('workSpaceId'), {}));
     }
     next();
+}
+
+const profileUpdateSchema = Joi.object({
+    firstName: Joi.string().trim().allow(null).error(new Error('firstName is required!')),
+    lastName: Joi.string().trim().allow(null).error(new Error('lastName is required!')),
+    gender: Joi.number().allow(null).error(new Error('gender is a number 0 for female 1 for male 2 for other')),
+    email: Joi.string().trim().allow(null,"").error(new Error('email is required!')),
+    address: Joi.string().trim().allow(null,"").error(new Error('address is required!')),
+    zipCode: Joi.string().trim().allow(null,"").error(new Error('zipCode is required!')),
+    workSpaceId: Joi.string().trim().allow(null,"").error(new Error('workSpaceId is required!')),
+    image: Joi.string().trim().allow(null, "").error(new Error('image is string!')),
+    universityName: Joi.string().trim().allow(null, "").error(new Error('universityName is string!')),
+    major: Joi.string().trim().allow(null, "").error(new Error('major is string!')),
+    yearOfEducationCompletion: Joi.string().trim().allow(null, "").error(new Error('yearOfEducationCompletion is string!')),
+    YearOfCameToUSA: Joi.string().trim().allow(null, "").error(new Error('YearOfCameToUSA is string!')),
+    collegeIdCard: Joi.string().trim().allow(null, "").error(new Error('collegeIdCard is string!')),
+    countryOfOrigin: Joi.string().trim().allow(null, "").error(new Error('countryOfOrigin is string!')),
+    RBSId: Joi.number().allow(null).error(new Error('RBSId is number!')),
+    rbsImage: Joi.string().trim().allow(null, "").error(new Error('image is string!')),
+    city: Joi.string().trim().allow(null, "").error(new Error('city is string!')),
+})
+
+export const profileUpdate = async (req: Request, res: Response, next: any) => {
+    const schema = profileUpdateSchema;
+    schema.validateAsync(req.body).then(result => {
+        req.body = result;
+        return next()
+    }).catch(error => {
+        res.status(400).json(new apiResponse(400, error.message, {}))
+    })
 }

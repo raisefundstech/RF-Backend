@@ -9,12 +9,20 @@ import { responseMessage } from '../helpers'
 import { generateVolunteerCode, generateOTP } from '../helpers/generateCode'
 import { sendEmail } from '../helpers/email'
 import { sendSMS,validOTP, sendLoginSMS } from '../helpers/message'
+import { deleteUserSessions } from '../helpers/authenticationQueries'
 const twilio: any = config.get("twilio");
 const client = require('twilio')(twilio.accountSid, twilio.authToken);
 const ObjectId = require('mongoose').Types.ObjectId
 const jwt_token_secret: any = config.get('jwt_token_secret')
 const refresh_jwt_token_secret: any = config.get('refresh_jwt_token_secret')
 
+/**
+ * Handles user sign up.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response indicating the success or failure of the sign up process.
+ */
 export const userSignUp = async (req: Request, res: Response) => {
     reqInfo(req)
     try {
@@ -22,8 +30,23 @@ export const userSignUp = async (req: Request, res: Response) => {
         let isAlready: any = await userModel.findOne({ $or: [{ email: body.email }, { mobileNumber: body.mobileNumber }], isActive: true })
         if (isAlready?.email == body?.email) return res.status(409).json(new apiResponse(409, responseMessage?.alreadyEmail, {}))
         if (isAlready?.mobileNumber == body?.mobileNumber) return res.status(409).json(new apiResponse(409, responseMessage?.alreadyMobileNumber, {}))
-
+        
         body.volunteerId = await generateVolunteerCode();
+
+        let checkUserExists: any = await userModel.findOne({ mobileNumber: body.mobileNumber, isActive: false })
+
+        if (checkUserExists) {
+            body.isActive = true
+            body.otp = null
+            body.otpExpireTime = null
+            body.device_token = []
+            let response = await userModel.findOneAndUpdate({ mobileNumber: body.mobileNumber }, body, { new: true })
+            if (response) {
+                return res.status(200).json(new apiResponse(200, responseMessage?.signupSuccess, {}))
+            } else {
+                return res.status(501).json(new apiResponse(501, "Something went wrong", {response}))
+            }
+        }
 
         let response = await new userModel(body).save();
 
@@ -37,6 +60,13 @@ export const userSignUp = async (req: Request, res: Response) => {
     }
 }
 
+/**
+ * Handles user sign-in.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response indicating the status of the sign-in process.
+ */
 export const userSignIn = async (req: Request, res: Response) => {
     let body = req.body;
     let otpFlag = 1;
@@ -81,13 +111,20 @@ export const userSignIn = async (req: Request, res: Response) => {
     }
 };
 
+/**
+ * Handles OTP verification for user authentication.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response indicating the result of the OTP verification.
+ */
 export const otpVerification = async (req: Request, res: Response) => {
     reqInfo(req)
     try {
         let body = req.body
         body.isActive = true
 
-        let findUser = await userModel.findOne({ otp: body.otp, mobileNumber: body.mobileNumber, isActive: true })
+        let findUser = await userModel.findOne({ otp: body.otp, mobileNumber: body.mobileNumber, isActive: true },{_id:1,otp:1,otpExpireTime:1})
 
         if (!findUser) return res.status(400).json(new apiResponse(400, responseMessage?.invalidOTP, {}))
 
@@ -98,31 +135,35 @@ export const otpVerification = async (req: Request, res: Response) => {
 
         if (findUser) {
 
-            // Removing the functionality of logout from all devices upon login from a device
-
-            // let LoggedIn = await userSessionModel.findOne({createdBy: ObjectId(findUser._doc._id.toString())})
-            // let logout_response = null;
+            // Only one device can be logged in at a time
+            let LoggedIn = await userSessionModel.findOne({createdBy: findUser?._id})
+            let logout_response = null;
             
-            // if(LoggedIn) {
-            //     var delete_session = await deleteSession(findUser._doc._id);
-            //     console.log(delete_session);
-            //     logout_response = deleteSession != null ? responseMessage?.logoutDevices : '';
-            // }
+            if(LoggedIn) {
+                let delete_sessions: any = await deleteUserSessions(findUser?._id);
+                if(delete_sessions?.error){
+                    throw new Error(responseMessage?.customMessage('Error in deleting sessions'));
+                }
+                logout_response = delete_sessions != null ? delete_sessions : 'User have no active session';
+                logger.info(logout_response);
+            }
 
-            // $addToSet: { device_token: device_token } } will be implemented into the notifications feature
             let response = await userModel.findOneAndUpdate(
                 { otp: body.otp, mobileNumber: body.mobileNumber, isActive: true },
                 {
-                  $set: {
-                    otp: null,
-                    otpExpireTime: null,
-                  },
-                  $addToSet: {
-                    device_token: body.device_token,
-                  },
+                    $set: {
+                        otp: null,
+                        otpExpireTime: null,
+                        device_token: [],
+                    },
                 },
                 { new: true }
             );
+
+            if (response) {
+                response.device_token.push(body.device_token);
+                await response.save();
+            }
 
             const token = jwt.sign({
                 _id: response._id,
@@ -140,6 +181,7 @@ export const otpVerification = async (req: Request, res: Response) => {
             await new userSessionModel({
                 createdBy: response._id,
                 token: token,
+                device_token: body?.device_token,
                 refresh_token
             }).save();
 
@@ -154,7 +196,8 @@ export const otpVerification = async (req: Request, res: Response) => {
                 tags: response?.tags,
                 token
             }
-            return res.status(200).json(new apiResponse(200, responseMessage?.OTPverified, responseIs))
+            let verfication_logout_endpoint_response = `${responseMessage?.OTPverified} & ${logout_response}`
+            return res.status(200).json(new apiResponse(200,verfication_logout_endpoint_response, responseIs))
         } else {
             return res.status(501).json(new apiResponse(501, 'Something went wrong', {}))
         }
@@ -164,6 +207,13 @@ export const otpVerification = async (req: Request, res: Response) => {
     }
 }
 
+/**
+ * Sends an OTP (One-Time Password) via SMS to the provided mobile number.
+ * 
+ * @param req - The request object containing the mobile number in the request body.
+ * @param res - The response object used to send the API response.
+ * @returns A JSON response indicating the success or failure of sending the OTP.
+ */
 export const sendOTP = async (req: Request, res: Response) => {
   try {
     const body = req.body;    // You should define the 'sendSMS' function to send the OTP via SMS
@@ -192,6 +242,12 @@ export const sendOTP = async (req: Request, res: Response) => {
 };
 
 // The verify OTP 
+/**
+ * Verifies the OTP sent by the user.
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response indicating the result of OTP verification.
+ */
 export const verifyOTP = async (req: Request, res: Response) => {
     try {
       const body = req.body;    // You should define the 'sendSMS' function to send the OTP via SMS
@@ -212,9 +268,15 @@ export const verifyOTP = async (req: Request, res: Response) => {
       console.error(error); // Log the error for debugging
       return res.status(500).json(new apiResponse(500, 'Internal server error',{error}));
     }
-  };
+};
 
-
+/**
+ * Resends OTP (One-Time Password) to the user's mobile number and email.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response indicating the status of the OTP resend operation.
+ */
 export const resendOTP = async (req: Request, res: Response) => {
     reqInfo(req)
     try {
@@ -266,6 +328,13 @@ export const resendOTP = async (req: Request, res: Response) => {
     }
 }
 
+/**
+ * Logs out the user by removing the device token from the user's document in the database.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response indicating the success or failure of the logout operation.
+ */
 export const userLogout = async (req: Request, res: Response) => {
     reqInfo(req)
     try {
