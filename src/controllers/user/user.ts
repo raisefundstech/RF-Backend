@@ -362,7 +362,7 @@ export const getUnverifiedVolunteers = async (req: Request, res: Response) => {
         }
         // Get all unverified volunteers from the database
         const response = await userModel.find({ workSpaceId: ObjectId(workspaceId), isActive: true, userStatus: 0 },{ 
-            otp: 0, otpExpireTime: 0, device_token: 0, loginType: 0, createdAt: 0, updatedAt: 0,
+            otp: 0, otpExpireTime: 0, device_token: 0, loginType: 0,
             __v:0, latitude:0, longitude:0, isActive:0
         });
         if (response) {
