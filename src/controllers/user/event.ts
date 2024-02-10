@@ -237,7 +237,7 @@ export const createEvent = async (req: Request, res: Response) => {
         response = await new eventModel(body).save();
 
         if (response) {
-            let userData = await userModel.find({ userType: { $in: [0, 1] }, isActive: true, workSpaceId: response?.workSpaceId }, { firstName: 1, lastName: 1, device_token: 1 });
+            let userData = await userModel.find({ userType: { $in: [0, 2] }, isActive: true, workSpaceId: response?.workSpaceId }, { firstName: 1, lastName: 1, device_token: 1 });
             logger.info(userData?.length);
             let title = `New event created`;
             const date = new Date(body.date);
@@ -519,7 +519,7 @@ export const apply = async (req: Request, res: Response) => {
 
                 const payload = {
                 title: `Applied for ${result.name}`,
-                message: `${result?.volunteerRequest.length % 10} users, applied to ${eventDetails?.name} event on ${formattedDate}.`,
+                message: `${result?.volunteerRequest.length % 10} users, applied to ${eventDetails?.name}(${formattedDate}).`,
                 data: {
                     type: 1,
                     eventId: result?._clsid,
