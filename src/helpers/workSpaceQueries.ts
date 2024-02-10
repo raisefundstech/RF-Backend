@@ -6,19 +6,19 @@ const ObjectId = require('mongoose').Types.ObjectId
 
 /**
  * Retrieves the details of a stadium by its workspace ID within an event.
- * @param eventId - The ID of the event.
- * @param workSpaceId - The ID of the workspace.
+ * @param workSpaceId - The ID of the event.
+ * @param stadiumId - The ID of the workspace.
  * @returns If the stadium is found, an object containing its details (name, address, latitude, longitude, stadiumPolicy).
  * If the stadium is not found, an object with an error message.
  */
-export const getStadiumDetailsByWorkSpace = async (eventId: string, workSpaceId: string) => {
-    logger.info("logging info"+" "+eventId+" "+workSpaceId)
+export const getStadiumDetailsByWorkSpace = async (workSpaceId: string, stadiumId: string) => {
+    logger.info("logging info"+" "+workSpaceId+" "+stadiumId)
     try {
         let response = await workSpaceModel.findOne(
             { 
-                _id: ObjectId(eventId), 
+                _id: ObjectId(workSpaceId), 
                 isActive: true, 
-                stadiums: { $elemMatch: { _id: ObjectId(workSpaceId) } }
+                stadiums: { $elemMatch: { _id: ObjectId(stadiumId) } }
             },
             { 'stadiums.$': 1 } 
         );

@@ -245,15 +245,28 @@ export const updateVolunteerPosition = async (req: Request, res: Response) => {
     let body = req.body, response, user: any = req.header('user');
     let userAuthority = await userModel.findOne({ _id: ObjectId(user._id), isActive: true })
     try {
+        let previousUserState = await userModel.findOne({ _id: ObjectId(body._id), isActive: true });
         if (userAuthority.userType == 1) {
             response = await userModel.findOneAndUpdate({ _id: ObjectId(body._id), isActive: true }, body, { new: true })
+            let messagePayload = null;
+            if (previousUserState?.userStatus != body?.userStatus) {
+                if (body?.userStatus == 1) {
+                    messagePayload = `Congratulations, your profile has been approved by ${userAuthority?.firstName} ${userAuthority?.lastName} and you can now apply to events!`;
+                } else if (body?.userStatus == 2) {
+                    messagePayload = `Your profile has been banned by ${userAuthority?.firstName} ${userAuthority?.lastName}. Please contact the admin for more information.`;
+                }
+            }
+            if(previousUserState?.userType != body?.userType) {
+                if(body?.userType == 2)
+                    messagePayload = `You have been promoted to a super volunteer by ${userAuthority?.firstName} ${userAuthority?.lastName}.`;
+            }
             if(body?.userStatus == 1) {
                 let userInfo = await userModel.findOne({_id: ObjectId(body?._id),isActive:true})
                 const tokens: string[] = userInfo?.device_token;
                 const userTokenMapper = mapTokensToUser(body?._id, tokens);
                 const payload = {
-                    title: 'Profile Approved',
-                    message: `Congratualtions, your profile has been approved by ${userAuthority?.firstName} ${userAuthority?.lastName} and you can now apply to events!`,
+                    title: 'Profile Update',
+                    message: messagePayload,
                     data: {
                         type: 1,
                         eventId: response?._id
