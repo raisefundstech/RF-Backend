@@ -76,7 +76,7 @@ export const sendNotification = async (expoPushTokens: String[], users: Object, 
 export const fetchUserTokens = async (volunteerId: string) => {
     var tokens: any = [];
     tokens = await userModel.findOne({_id: ObjectId(volunteerId)}, {device_token: 1});
-    return tokens?.device;
+    return tokens?.device_token;
 }
 
 /**
