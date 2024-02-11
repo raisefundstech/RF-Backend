@@ -648,7 +648,7 @@ export const updateVolunteers = async (req: Request, res: Response) => {
                 let userInfo = await getUser(data?.volunteerId, true); 
                 payload = {
                     title: `Event request ${data?.requestStatus}`,
-                    message: `Hello, ${userInfo?.firstName} your event request has been ${body?.requestStatus} for the ${eventDetails?.name} on ${formattedDate}.`,
+                    message: `Hello, ${userInfo?.firstName}! Your event request for ${eventDetails?.name} on ${formattedDate} has been ${data?.requestStatus}.`,
                     data: {
                         type: 1,
                         eventId: body._id
@@ -988,7 +988,7 @@ export const volunteerCheckOut = async (req: Request, res: Response) => {
 
             if (userInfo?.device_token?.length > 0) {
                 let userTokenMapper = mapTokensToUser(data?.volunteerId, userInfo?.device_token);
-                const date = new Date(body.date);
+                const date = new Date(eventInfo?.date);
                 const formattedDate = date.toLocaleString('en-US', { month: 'short', day: '2-digit' });
 
                 let payload = {

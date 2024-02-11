@@ -248,7 +248,7 @@ export const updateVolunteerPosition = async (req: Request, res: Response) => {
         let previousUserState = await userModel.findOne({ _id: ObjectId(body._id), isActive: true });
         if (userAuthority.userType == 1) {
             response = await userModel.findOneAndUpdate({ _id: ObjectId(body._id), isActive: true }, body, { new: true })
-            let messagePayload = null;
+            let messagePayload = `Your profile has been updated by ${userAuthority?.firstName} ${userAuthority?.lastName}.`;
             if (previousUserState?.userStatus != body?.userStatus) {
                 if (body?.userStatus == 1) {
                     messagePayload = `Congratulations, your profile has been approved by ${userAuthority?.firstName} ${userAuthority?.lastName} and you can now apply to events!`;
@@ -258,22 +258,22 @@ export const updateVolunteerPosition = async (req: Request, res: Response) => {
             }
             if(previousUserState?.userType != body?.userType) {
                 if(body?.userType == 2)
-                    messagePayload = `You have been promoted to a super volunteer by ${userAuthority?.firstName} ${userAuthority?.lastName}.`;
+                    messagePayload = `Congratulations! You have been assigned the role of a super volunteer by ${userAuthority?.firstName} ${userAuthority?.lastName}.`;
             }
-            if(body?.userStatus == 1) {
-                let userInfo = await userModel.findOne({_id: ObjectId(body?._id),isActive:true})
-                const tokens: string[] = userInfo?.device_token;
-                const userTokenMapper = mapTokensToUser(body?._id, tokens);
-                const payload = {
-                    title: 'Profile Update',
-                    message: messagePayload,
-                    data: {
-                        type: 1,
-                        eventId: response?._id
-                    }
-                };
-                sendNotification(tokens, userTokenMapper, payload);
-            }
+            
+            let userInfo = await userModel.findOne({_id: ObjectId(body?._id),isActive:true})
+            const tokens: string[] = userInfo?.device_token;
+            const userTokenMapper = mapTokensToUser(body?._id, tokens);
+            const payload = {
+                title: 'Profile Update',
+                message: messagePayload,
+                data: {
+                    type: 1,
+                    eventId: response?._id
+                }
+            };
+            sendNotification(tokens, userTokenMapper, payload);
+            
         }
         if (response) {
             return res.status(200).json(new apiResponse(200, 'Volunteer information updated successfully!', {}))
