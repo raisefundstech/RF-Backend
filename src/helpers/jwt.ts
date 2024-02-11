@@ -24,9 +24,9 @@ export const userJWT = async (req: Request, res: Response, next) => {
     if (authorization) {
         try {
             let isVerifyToken:any = jwt.verify(authorization, jwt_token_secret)
-            result = await userSessionModel.findOne({ createdBy: new ObjectId(isVerifyToken?._id), isActive: true })
+            result = await userSessionModel.findOne({ createdBy: new ObjectId(isVerifyToken?._id), token: authorization, isActive: true })
             let userInfo = await userModel.findOne({ _id: new ObjectId(isVerifyToken?._id), isActive: true })
-            if(userInfo == null || userInfo == undefined) {
+            if(userInfo == undefined) {
                 return res.status(401).json(new apiResponse(401, responseMessage.customMessage('User doesnt exist, please signup to continue'), {}))
             }
             if (result?.isActive == true) {
