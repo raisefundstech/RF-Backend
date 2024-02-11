@@ -23,6 +23,7 @@ import { timeDifferences } from '../../helpers/timeDifference'
 import { workSpaceModel } from '../../database/models/workSpace'
 import { getStadiumDetailsByWorkSpace } from '../../helpers/workSpaceQueries'
 import { sendNotification, fetchUserTokens, mapTokensToUser } from '../../helpers/notification'
+import { get } from 'config'
 
 const ObjectId = require('mongoose').Types.ObjectId
 const moment = require('moment-timezone');
@@ -236,7 +237,7 @@ export const createEvent = async (req: Request, res: Response) => {
         response = await new eventModel(body).save();
 
         if (response) {
-            let userData = await userModel.find({ userType: 0, isActive: true, workSpaceId: response?.workSpaceId }, { firstName: 1, lastName: 1, device_token: 1 });
+            let userData = await userModel.find({ userType: { $in: [0, 2] }, isActive: true, workSpaceId: response?.workSpaceId }, { firstName: 1, lastName: 1, device_token: 1 });
             logger.info(userData?.length);
             let title = `New event created`;
             const date = new Date(body.date);
@@ -499,34 +500,37 @@ export const apply = async (req: Request, res: Response) => {
             return res.status(409).json(new apiResponse(409, result.error, {}));
         }
 
-        response = await fetchAdminsAndSuperVolunteers(body?.workSpaceId)
-        var getEvent = await eventModel.findOne({ _id: ObjectId(body._id), isActive: true })
-        const eventDetails = await getStadiumDetailsByWorkSpace(getEvent?.workSpaceId, getEvent?.stadiumId);
-        
-        if(response?.error){
-            throw new Error(result.error);
-        }
-        const updatePromises = response.map(async (data: any) => {
-            const tokens: string[] = data?.device_token;
-            const userTokenMapper = mapTokensToUser(data?._id, tokens);
+        // Fetch user tokens and send notification to all the super volunteers and admins when the volunteer request is in counts of 10, 20, etc..
+        if(result?.volunteerRequest.length % 10 === 0){
+            response = await fetchAdminsAndSuperVolunteers(body?.workSpaceId)
+            var getEvent = await eventModel.findOne({ _id: ObjectId(body._id), isActive: true })
+            const eventDetails = await getStadiumDetailsByWorkSpace(getEvent?.workSpaceId, getEvent?.stadiumId);
+            
+            if(response?.error){
+                throw new Error(result.error);
+            }
 
-            const findUser = await userModel.findOne({ _id: ObjectId(user?._id)});
-            const date = new Date();
+            const date = new Date(getEvent?.date);
             const formattedDate = date.toLocaleString('en-US', { month: 'short', day: '2-digit' });
+            
+            const updatePromises = response.map(async (data: any) => {
+                const tokens: string[] = data?.device_token;
+                const userTokenMapper = mapTokensToUser(data?._id, tokens);
 
-            const payload = {
-              title: `Applied for ${result.name}`,
-              message: `${findUser?.firstName} ${findUser?.lastName} (${findUser.volunteerId}), Applied ${eventDetails?.name} event on ${formattedDate}.`,
-              data: {
-                type: 1,
-                eventId: result?._clsid,
-              },
-            };
-            logger.info(payload);
-            sendNotification(tokens, userTokenMapper, payload);
-        });
-        // Wait for all promises to complete
-        await Promise.all(updatePromises);
+                const payload = {
+                title: `Applied for ${result.name}`,
+                message: `${result?.volunteerRequest.length % 10} users, applied to ${eventDetails?.name}(${formattedDate}).`,
+                data: {
+                    type: 1,
+                    eventId: result?._clsid,
+                },
+                };
+                logger.info(payload);
+                sendNotification(tokens, userTokenMapper, payload);
+            });
+            // Wait for all promises to complete
+            await Promise.all(updatePromises);
+        }
         return res.status(200).json(new apiResponse(200, "You have succeessfully applied for the event", {}));
     } catch (error) {
         return res.status(500).json(new apiResponse(500, responseMessage?.customMessage(error), {error}));
@@ -557,11 +561,12 @@ export const withdraw = async (req: Request, res: Response) => {
         if(response?.error) {
             throw new Error(result.error);
         }
+        const findUser = await userModel.findOne({ _id: ObjectId(user?._id)});
+        // currently commented the notification part as sending notification 
+        /*
         const sendNotifications = response.map(async (data: any) => {
             const tokens: string[] = data?.device_token;
             const userTokenMapper = mapTokensToUser(data?._id, tokens);
-
-            const findUser = await userModel.findOne({ _id: ObjectId(user?._id)});
             const date = new Date(new Date());
             const formattedDate = date.toLocaleString('en-US', { month: 'short', day: '2-digit' });
 
@@ -577,7 +582,7 @@ export const withdraw = async (req: Request, res: Response) => {
             sendNotification(tokens, userTokenMapper, payload);
         });
         // Wait for all promises to complete
-        await Promise.all(sendNotifications);
+        await Promise.all(sendNotifications); */
         return res.status(200).json(new apiResponse(200, "You have successfully withdrawn from the event", {}));
     } catch (error) {
         return res.status(500).json(new apiResponse(500, responseMessage?.customMessage(error),{}));
@@ -643,7 +648,7 @@ export const updateVolunteers = async (req: Request, res: Response) => {
                 let userInfo = await getUser(data?.volunteerId, true); 
                 payload = {
                     title: `Event request ${data?.requestStatus}`,
-                    message: `Hello, ${userInfo?.firstName} your event request has been ${body?.requestStatus} for the ${eventDetails?.name} on ${formattedDate}.`,
+                    message: `Hello, ${userInfo?.firstName}! Your event request for ${eventDetails?.name} on ${formattedDate} has been ${data?.requestStatus}.`,
                     data: {
                         type: 1,
                         eventId: body._id
@@ -983,7 +988,7 @@ export const volunteerCheckOut = async (req: Request, res: Response) => {
 
             if (userInfo?.device_token?.length > 0) {
                 let userTokenMapper = mapTokensToUser(data?.volunteerId, userInfo?.device_token);
-                const date = new Date(body.date);
+                const date = new Date(eventInfo?.date);
                 const formattedDate = date.toLocaleString('en-US', { month: 'short', day: '2-digit' });
 
                 let payload = {
