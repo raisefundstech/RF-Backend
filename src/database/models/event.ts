@@ -17,7 +17,7 @@ const eventSchema: any = new mongoose.Schema({
     volunteerRequest: {
         type: [{
             volunteerId: { type: mongoose.Schema.Types.ObjectId },
-            requestStatus: { type: String, default: "PENDING", enum: ["PENDING", "APPROVED", "DECLINED"] },            
+            requestStatus: { type: String, default: "PENDING", enum: ["PENDING", "APPROVED", "DECLINED", "ATTENDED"] },            
             attendance: { type: Boolean, default: false },
             appliedAt: { type: Date, default: new Date() },
             checkedIn: { type: Date, default: null },

@@ -1013,3 +1013,25 @@ export const volunteerCheckOut = async (req: Request, res: Response) => {
         return res.status(500).json(new apiResponse(500, responseMessage?.customMessage(error), {}));
     }
 }
+
+/**
+ * Retrieves the volunteers associated with an event.
+ * 
+ * @param req - The request object.
+ * @param res - The response object.
+ * @returns A JSON response with the volunteers' information.
+ */
+export const getVolunteersByEvent = async (req: Request, res: Response) => {
+    reqInfo(req);
+    let user: any = req.header('user'), response: any, body = req.body;
+    if(user?.type != 1 && user?.type != 2){
+        return res.status(403).json(new apiResponse(401, responseMessage?.deniedPermission, {}));
+    }
+    try {
+        response = await eventModel.findOne({ _id: ObjectId(req?.params?.id), isActive: true }, { volunteerRequest: 1 });
+        if (response) return res.status(200).json(new apiResponse(200, responseMessage.getDataSuccess('volunteers'), response))
+        else return res.status(404).json(new apiResponse(404, responseMessage.getDataNotFound('events'), {}));
+    } catch (error) {
+        return res.status(500).json(new apiResponse(500, responseMessage?.customMessage(error), {}));
+    }
+}

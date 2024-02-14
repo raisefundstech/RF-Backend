@@ -1,5 +1,6 @@
 import { eventModel,userModel, workSpaceModel } from "../database";
 import { logger } from "./winston_logger";
+import { volunteerRequestStatus } from "../controllers/types";
 const ObjectId = require('mongoose').Types.ObjectId
 
 /**
@@ -279,6 +280,19 @@ async function updateVolunteersRequestStatus(req: any, volunteerId: string, stat
         const { body } = req;
         let user: any = req.header('user')
 
+        // Functionality to check if the volunteer has already checked-out and attendance is true, if already checked-out then return error
+        const volunteerCheckOutStatus = await eventModel.findOne({
+            _id: ObjectId(body._id),
+            isActive: true,
+            "volunteerRequest.volunteerId": ObjectId(volunteerId),
+            "volunteerRequest.attendance": true
+        });
+
+        if (volunteerCheckOutStatus) {
+            logger.error("Volunteer has attended the event, cant update the status.");
+            throw new Error("Volunteer has attended the event, can't update the status.");
+        }
+
         const updateQuery: any = {
             $set: {
                 "volunteerRequest.$.requestStatus": status
@@ -306,13 +320,13 @@ async function updateVolunteersRequestStatus(req: any, volunteerId: string, stat
 
         if (!response) {
             logger.error("update volunteer request failed.",response);
-            throw new Error("Document not found or criteria did not match.");
+            throw new Error("Volunteer not found or criteria did not match.");
         }
         logger.info("Volunteer request successfully updated");
         return response;
     } catch (error) {
-        logger.error("Error updating volunteer request:", error);
-        return { error: `Invalid volunteerId ${volunteerId}, please correct the VolunteerId and try again`};
+        logger.error("Error updating volunteer request:", error.message);
+        return { error: error.message};
     }
 }
 
@@ -385,7 +399,8 @@ async function updateVolunteersCheckOutStatus(eventId: string, volunteerId: stri
             },
             {
                 $set: {
-                    "volunteerRequest.$.checkedOut": new Date(),
+                    "volunteerRequest.$.checkedOut": new Date(), // update checkout time
+                    "volunteerRequest.$.requestStatus": volunteerRequestStatus.ATTENDED, // update request status to "ATTENDED
                     "volunteerRequest.$.attendance": true,
                 },
             },
