@@ -27,22 +27,8 @@ async function volunteerInfoByEvent (req: any, user: any): Promise<any> {
         },
         {
             $project: {
+            _id: 1,
             workSpaceId: 1,
-            name: 1,
-            address: 1,
-            latitude: 1,
-            longitude: 1,
-            stadiumId: 1,
-            date: 1,
-            startTime: 1,
-            endTime: 1,
-            volunteerSize: 1,
-            notes: 1,
-            rfCoins: 1,
-            createdBy: 1,
-            updatedBy: 1,
-            isActive: 1,
-            parkingPassImageURL: 1,
             volunteerRequest: {
                 $map: {
                 input: "$volunteerRequest",
@@ -516,18 +502,6 @@ async function getStadiumDetails(eventId: string) {
             {
                 $project: {
                     _id: 1,
-                    date: 1,
-                    stadiumId: 1,
-                    startTime: 1,
-                    endTime: 1,
-                    volunteerRequest: 1,
-                    createdAt: 1,
-                    updatedAt: 1,
-                    createdBy: 1,
-                    updatedBy: 1,
-                    volunteerSize: 1,
-                    rfCoins: 1,
-                    notes: 1,
                     workspaceId: "$workspace._id",
                     stadium: {
                         $filter: {

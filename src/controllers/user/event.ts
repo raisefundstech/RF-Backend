@@ -19,11 +19,10 @@ import {
 import { eventModel, roomModel, userModel } from '../../database'
 import { getUser } from '../../helpers/userQueries'
 import { pushUserEventRecord } from '../../helpers/statsQueries'
-import { timeDifferences } from '../../helpers/timeDifference'
 import { workSpaceModel } from '../../database/models/workSpace'
 import { getStadiumDetailsByWorkSpace } from '../../helpers/workSpaceQueries'
 import { sendNotification, fetchUserTokens, mapTokensToUser } from '../../helpers/notification'
-import { get } from 'config'
+import { userRoles } from '../types'
 
 const ObjectId = require('mongoose').Types.ObjectId
 const moment = require('moment-timezone');
@@ -320,22 +319,26 @@ export const updateEvent = async (req: Request, res: Response) => {
 export const getEventById = async (req: Request, res: Response) => {
     reqInfo(req)
     let user: any = req.header('user'), response: any
-    let userStatus = await userModel.findOne({ _id: ObjectId(user._id) }, { userType: 1 });
     try {
-        const pipeline = await volunteerInfoByEvent(req, user);
-        response = await eventModel.aggregate(pipeline);
+        response = await eventModel.findOne(
+            { 
+                _id: ObjectId(req?.params?.id), 
+                isActive: true 
+            }, 
+            { 
+                __v: 0,
+                isActive: 0 ,
+                volunteerRequest: 0
+            }
+        );
         const stadiumInfo: any = await getStadiumDetails(req?.params?.id);
         // Inject stadium details into the response
-        response[0].stadiumName = stadiumInfo?.[0]?.name;
-        response[0].stadiumAddress = stadiumInfo?.[0]?.address;
-        response[0].stadiumPolicy = stadiumInfo?.[0]?.stadiumPolicy;
-        response[0].latitude = stadiumInfo?.[0]?.latitude;
-        response[0].longitude = stadiumInfo?.[0]?.longitude;
-        // If the userStatus represent the user is a volunteer delete the volunteerRequest from the response
-        if(userStatus?.userType === 0){
-            response[0].volunteerRequest = response[0]?.volunteerRequest.filter((data: any) => data?.volunteerId?.toString() === user?._id?.toString());
-        }
-        if (response) return res.status(200).json(new apiResponse(200, responseMessage.getDataSuccess('event'), response[0]))
+        response.stadiumName = stadiumInfo?.[0]?.name;
+        response.stadiumAddress = stadiumInfo?.[0]?.address;
+        response.stadiumPolicy = stadiumInfo?.[0]?.stadiumPolicy;
+        response.latitude = stadiumInfo?.[0]?.latitude;
+        response.longitude = stadiumInfo?.[0]?.longitude;
+        if (response) return res.status(200).json(new apiResponse(200, responseMessage.getDataSuccess('event'), response))
         else return res.status(400).json(new apiResponse(400, responseMessage.getDataNotFound('event'), {}))
     } catch (error) {
         return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, error));
@@ -1024,11 +1027,17 @@ export const volunteerCheckOut = async (req: Request, res: Response) => {
 export const getVolunteersByEvent = async (req: Request, res: Response) => {
     reqInfo(req);
     let user: any = req.header('user'), response: any, body = req.body;
-    if(user?.type != 1 && user?.type != 2){
-        return res.status(403).json(new apiResponse(401, responseMessage?.deniedPermission, {}));
+    let userStatus = await userModel.findOne({ _id: ObjectId(user._id) }, { userType: 1 });
+    if(user?.type != userRoles.ADMIN && user?.type != userRoles.SUPER_VOLUNTEER){
+        return res.status(403).json(new apiResponse(403, responseMessage?.deniedPermission, {}));
     }
     try {
-        response = await eventModel.findOne({ _id: ObjectId(req?.params?.id), isActive: true }, { volunteerRequest: 1 });
+        const pipeline = await volunteerInfoByEvent(req, user);
+        response = await eventModel.aggregate(pipeline);
+        // If the userStatus represent the user is a volunteer delete the volunteerRequest from the response
+        if(userStatus?.userType === 0){
+            response[0].volunteerRequest = response[0]?.volunteerRequest.filter((data: any) => data?.volunteerId?.toString() === user?._id?.toString());
+        }
         if (response) return res.status(200).json(new apiResponse(200, responseMessage.getDataSuccess('volunteers'), response))
         else return res.status(404).json(new apiResponse(404, responseMessage.getDataNotFound('events'), {}));
     } catch (error) {

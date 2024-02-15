@@ -4,3 +4,9 @@ export const volunteerRequestStatus = {
     DECLINED: 'DECLINED',
     ATTENDED: 'ATTENDED'
 }
+
+export const userRoles = {
+    VOLUNTEER: 0,
+    ADMIN: 1,
+    SUPER_VOLUNTEER: 2
+}

@@ -222,7 +222,7 @@ export const getVolunteer = async (req: Request, res: Response) => {
                 return res.status(404).json(new apiResponse(404, responseMessage.getDataNotFound('volunteer'), {}));
             }
         } else {
-            return res.status(401).json(new apiResponse(401, responseMessage.deniedPermission, {}));
+            return res.status(403).json(new apiResponse(403, responseMessage.deniedPermission, {}));
         }
     } catch (error) {
         return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, error));
@@ -371,7 +371,7 @@ export const getUnverifiedVolunteers = async (req: Request, res: Response) => {
     try {
         let userAuthority = await userModel.findOne({ _id: ObjectId(user._id), isActive: true }, { userType: 1 });
         if (userAuthority.userType != 1) {
-            return res.status(401).json(new apiResponse(401, responseMessage.deniedPermission, {}));
+            return res.status(403).json(new apiResponse(403, responseMessage.deniedPermission, {}));
         }
         // Get all unverified volunteers from the database
         const response = await userModel.find({ workSpaceId: ObjectId(workspaceId), isActive: true, userStatus: 0 },{ 
