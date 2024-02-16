@@ -327,6 +327,7 @@ export const getEventById = async (req: Request, res: Response) => {
             }, 
             { 
                 __v: 0,
+                volunteerRequest: 0,
                 isActive: 0
             }
         );
