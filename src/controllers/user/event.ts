@@ -327,12 +327,24 @@ export const getEventById = async (req: Request, res: Response) => {
             }, 
             { 
                 __v: 0,
-                isActive: 0 ,
-                volunteerRequest: 0
+                isActive: 0
             }
         );
+
+        let volunteerRequestInfo = await eventModel.findOne(
+            { 
+                _id: ObjectId(req?.params?.id),
+                volunteerRequest: { $elemMatch: { volunteerId: ObjectId(user?._id) } },
+                isActive: true 
+            }, 
+            { 
+                volunteerRequest: 1
+            }
+        );
+        
         const stadiumInfo: any = await getStadiumDetails(req?.params?.id);
         // Inject stadium details into the response
+        response.volunteerRequest = volunteerRequestInfo?.volunteerRequest === undefined ? [] : volunteerRequestInfo?.volunteerRequest;
         response.stadiumName = stadiumInfo?.[0]?.name;
         response.stadiumAddress = stadiumInfo?.[0]?.address;
         response.stadiumPolicy = stadiumInfo?.[0]?.stadiumPolicy;
