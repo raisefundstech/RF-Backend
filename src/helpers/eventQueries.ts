@@ -265,13 +265,16 @@ async function updateVolunteersRequestStatus(req: any, volunteerId: string, stat
     try {
         const { body } = req;
         let user: any = req.header('user')
-
         // Functionality to check if the volunteer has already checked-out and attendance is true, if already checked-out then return error
         const volunteerCheckOutStatus = await eventModel.findOne({
             _id: ObjectId(body._id),
             isActive: true,
-            "volunteerRequest.volunteerId": ObjectId(volunteerId),
-            "volunteerRequest.attendance": true
+            volunteerRequest: {
+                $elemMatch: {
+                    volunteerId: ObjectId(volunteerId),
+                    attendance: true
+                }
+            }
         });
 
         if (volunteerCheckOutStatus) {
