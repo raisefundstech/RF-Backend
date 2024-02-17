@@ -327,6 +327,15 @@ async function updateVolunteersRequestStatus(req: any, volunteerId: string, stat
  */
 async function updateVolunteersCheckInStatus(eventId: string, volunteerId: string): Promise<any> {
     try {
+        let checkUserStatus = await userModel.findOne({_id: ObjectId(volunteerId), isActive: true}, {userStatus: 1});
+        if (!checkUserStatus) {
+            logger.error("Volunteer Deleted thier account, cant perform check-in.");
+            throw new Error("Volunteer Deleted thier account, cant perform check-in.");
+        }
+        if(checkUserStatus?.userStatus === 2) {
+            logger.error("Volunteer is banned, cant perform check-in.");
+            throw new Error("Volunteer is banned, cant perform check-in.");
+        }
         const response = await eventModel.findOneAndUpdate(
             {
                 _id: ObjectId(eventId),
@@ -363,6 +372,22 @@ async function updateVolunteersCheckInStatus(eventId: string, volunteerId: strin
  */
 async function updateVolunteersCheckOutStatus(eventId: string, volunteerId: string): Promise<any> {
     try {
+        let checkUserStatus = await userModel.findOne(
+          { _id: ObjectId(volunteerId), isActive: true },
+          { userStatus: 1 }
+        );
+        if (!checkUserStatus) {
+          logger.error(
+            "Volunteer Deleted thier account, cant perform check-out."
+          );
+          throw new Error(
+            "Volunteer Deleted thier account, cant perform check-out."
+          );
+        }
+        if (checkUserStatus?.userStatus === 2) {
+          logger.error("Volunteer is banned, cant perform check-out.");
+          throw new Error("Volunteer is banned, cant perform check-out.");
+        }
         // check if volunteer has checked-in
         const event = await eventModel.findOne({
           _id: ObjectId(eventId),
