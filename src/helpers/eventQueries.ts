@@ -121,9 +121,7 @@ async function volunteerInfoByEvent (req: any, user: any): Promise<any> {
 async function applyOnEvent(req: any, userId: string): Promise<any> {
     try {
         let response: any = {}, body = req.body; 
-
         const getEventData = await eventModel.findOne({_id: ObjectId(body._id), isActive: true},{date:1,startTime:1,endTime:1});
-
         const eventsAppliedOnSameDay = await eventModel.aggregate([
             {
               $match: {
@@ -135,14 +133,14 @@ async function applyOnEvent(req: any, userId: string): Promise<any> {
                       $dateToString: {
                         format: "%Y-%m-%d",
                         date: "$date",
-                        timezone: "UTC" 
+                        timezone: "America/Los_Angeles" 
                       }
                     },
                     {
                       $dateToString: {
                         format: "%Y-%m-%d",
                         date: getEventData.date,
-                        timezone: "UTC" 
+                        timezone: "America/Los_Angeles" 
                       }
                     }
                   ]
@@ -154,7 +152,7 @@ async function applyOnEvent(req: any, userId: string): Promise<any> {
             }
           ]);
 
-
+          console.log(eventsAppliedOnSameDay);
         if(eventsAppliedOnSameDay.length > 0) {
             response['error'] = `Volunteer has already applied to ${eventsAppliedOnSameDay?.[0]?.name} on the same day, please withdraw from this event and try again.`;
             return response
