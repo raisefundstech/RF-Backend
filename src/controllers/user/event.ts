@@ -346,11 +346,14 @@ export const getEventById = async (req: Request, res: Response) => {
         const stadiumInfo: any = await getStadiumDetails(req?.params?.id);
         // Inject stadium details into the response
         response.volunteerRequest = volunteerRequestInfo?.volunteerRequest === undefined ? [] : volunteerRequestInfo?.volunteerRequest;
-        response.stadiumName = stadiumInfo?.[0]?.name;
-        response.stadiumAddress = stadiumInfo?.[0]?.address;
-        response.stadiumPolicy = stadiumInfo?.[0]?.stadiumPolicy;
-        response.latitude = stadiumInfo?.[0]?.latitude;
-        response.longitude = stadiumInfo?.[0]?.longitude;
+        response = {
+            ...response._doc,
+            stadiumName: stadiumInfo?.[0]?.name,
+            stadiumAddress: stadiumInfo?.[0]?.address,
+            stadiumPolicy: stadiumInfo?.[0]?.stadiumPolicy,
+            latitude: stadiumInfo?.[0]?.latitude,
+            longitude: stadiumInfo?.[0]?.longitude
+        }
         if (response) return res.status(200).json(new apiResponse(200, responseMessage.getDataSuccess('event'), response))
         else return res.status(400).json(new apiResponse(400, responseMessage.getDataNotFound('event'), {}))
     } catch (error) {
