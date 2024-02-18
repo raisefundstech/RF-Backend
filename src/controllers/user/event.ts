@@ -1518,8 +1518,7 @@ export const getVolunteersByEvent = async (req: Request, res: Response) => {
     { userType: 1 }
   );
   if (
-    user?.type != userRoles.ADMIN &&
-    user?.type != userRoles.SUPER_VOLUNTEER
+    userStatus?.userType == userRoles.VOLUNTEER
   ) {
     return res
       .status(403)
