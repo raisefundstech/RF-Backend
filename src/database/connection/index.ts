@@ -1,8 +1,8 @@
-import config from "config";
-import mongoose, { ConnectOptions } from "mongoose";
-import express from "express";
-const mongooseConnection = express();
-const dbUrl: any = config.get("db_url_dev");
+import config from 'config'
+import mongoose, { ConnectOptions } from 'mongoose'
+import express from 'express'
+const mongooseConnection = express()
+const dbUrl: any = config.get('db_url_prod')
 
 mongoose.set("strictQuery", true);
 // console.log(dbUrl);
