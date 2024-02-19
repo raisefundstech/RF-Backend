@@ -93,7 +93,7 @@ export const deleteSession = async function (
     });
     const remove_device_token = await userModel.findOneAndUpdate(
       { _id: new ObjectId(userId) },
-      { $pull: { device_token: user_token[0]?.device_token } },
+      { device_token: [] },
       { new: true }
     );
     logger.info(`Retrived user_token from the userSessionModel ${user_token}`);

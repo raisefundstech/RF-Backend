@@ -758,7 +758,7 @@ export const apply = async (req: Request, res: Response) => {
 
         const payload = {
           title: `Applied for ${result.name}`,
-          message: `${result?.volunteerRequest.length % 10} users, applied to ${
+          message: `${result?.volunteerRequest.length} users, applied to ${
             eventDetails?.name
           }(${formattedDate}).`,
           data: {
@@ -959,7 +959,7 @@ export const updateVolunteers = async (req: Request, res: Response) => {
         const tokens: any[] = await fetchUserTokens(data?.volunteerId);
 
         if (tokens?.length > 0) {
-          userTokenMapper = mapTokensToUser(data?.volunteerId, tokens);
+          userTokenMapper = await mapTokensToUser(data?.volunteerId, tokens);
           let date = getEvent?.date;
           const formattedDate = date?.toLocaleString("en-US", {
             month: "short",
@@ -974,7 +974,7 @@ export const updateVolunteers = async (req: Request, res: Response) => {
               eventId: body._id,
             },
           };
-          logger.info(payload);
+          // logger.info(payload);
           sendNotification(tokens, userTokenMapper, payload);
         } else {
           console.log(

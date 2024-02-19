@@ -3,7 +3,7 @@ import express, { Request, Response } from "express";
 import http from "http";
 import cors from "cors";
 import * as packageInfo from "../package.json";
-import { messageModel, mongooseConnection } from "./database";
+import { mongooseConnection } from "./database";
 import { router } from "./routes";
 
 const app = express();

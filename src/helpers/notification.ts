@@ -61,10 +61,11 @@ export const sendNotification = async (
         let match = message.match(/"ExponentPushToken\[(.*?)\]"/);
         let token = match ? match[0] : null;
         // Delete the Expo token since the device is not registered anymore
-        await userModel.findOneAndUpdate(
-          { _id: users["token"], device_token: token },
-          { $pull: { device_token: token } }
-        );
+        // temproary commented
+        // await userModel.findOneAndUpdate(
+        //   { _id: users["token"], device_token: token },
+        //   { $pull: { device_token: token } }
+        // );
         logger.error(
           `Push notification status: ${ticket.status} failed with following error message: ${message}`
         );
@@ -106,8 +107,8 @@ export const mapTokensToUser = async (
 ) => {
   var users: any = {};
   for (const token of tokens) {
-    const key = token.toString(); // Convert token to string if necessary
-    users[key] = volunteerId.toString();
+    const key = token?.toString(); // Convert token to string if necessary
+    users[key] = volunteerId?.toString();
   }
   return users;
 };
