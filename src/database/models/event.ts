@@ -1,6 +1,7 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
-const eventSchema: any = new mongoose.Schema({
+const eventSchema: any = new mongoose.Schema(
+  {
     workSpaceId: { type: mongoose.Schema.Types.ObjectId, default: null },
     name: { type: String, default: null },
     latitude: { type: Number, default: 0.0 },
@@ -11,28 +12,39 @@ const eventSchema: any = new mongoose.Schema({
     endTime: { type: Date, default: null },
     volunteerSize: { type: Number, default: 0 },
     notes: { type: String, default: null },
-    rfCoins : { type: Number, default: 0 },
+    rfCoins: { type: Number, default: 0 },
     stadiumId: { type: mongoose.Schema.Types.ObjectId, default: null },
     parkingPassImageURL: { type: String, default: null },
     volunteerRequest: {
-        type: [{
-            volunteerId: { type: mongoose.Schema.Types.ObjectId },
-            requestStatus: { type: String, default: "PENDING", enum: ["PENDING", "APPROVED", "DECLINED"] },            
-            attendance: { type: Boolean, default: false },
-            appliedAt: { type: Date, default: new Date() },
-            checkedIn: { type: Date, default: null },
-            checkedOut: { type: Date, default: null },
-            userNote: [{
-                note: { type: String },
-                createdAt: { type: Date, default: Date.now },
-                createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "user" }
-            }],
-        }], default: []
+      type: [
+        {
+          volunteerId: { type: mongoose.Schema.Types.ObjectId },
+          requestStatus: {
+            type: String,
+            default: "PENDING",
+            enum: ["PENDING", "APPROVED", "DECLINED", "ATTENDED"],
+          },
+          attendance: { type: Boolean, default: false },
+          appliedAt: { type: Date, default: new Date() },
+          checkedIn: { type: Date, default: null },
+          checkedOut: { type: Date, default: null },
+          userNote: [
+            {
+              note: { type: String },
+              createdAt: { type: Date, default: Date.now },
+              createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
+            },
+          ],
+        },
+      ],
+      default: [],
     },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
     isGroupCreated: { type: Boolean, default: false },
-    isActive: { type: Boolean, default: true }
-}, { timestamps: true });
+    isActive: { type: Boolean, default: true },
+  },
+  { timestamps: true }
+);
 
-export const eventModel = mongoose.model('event', eventSchema)
+export const eventModel = mongoose.model("event", eventSchema);
