@@ -383,12 +383,19 @@ export const updateVolunteerPosition = async (req: Request, res: Response) => {
         body,
         { new: true }
       );
+      let title = "Profile Update";
       let messagePayload = `Your profile has been updated by ${userAuthority?.firstName} ${userAuthority?.lastName}.`;
+      console.log(previousUserState?.userStatus, body?.userStatus)
       if (previousUserState?.userStatus != body?.userStatus) {
         if (body?.userStatus == 1) {
+          title = "Profile Approved";
           messagePayload = `Congratulations, your profile has been approved by ${userAuthority?.firstName} ${userAuthority?.lastName} and you can now apply to events!`;
         } else if (body?.userStatus == 2) {
+          title = "Profile Banned";
           messagePayload = `Your profile has been banned by ${userAuthority?.firstName} ${userAuthority?.lastName}. Please contact the admin for more information.`;
+        } else if (body?.userStatus == 3) {
+          title = "Profile Rejected";
+          messagePayload = `Your profile has been rejected by ${userAuthority?.firstName} ${userAuthority?.lastName}. Please contact the admin for more information.`;
         }
       }
       if (previousUserState?.userType != body?.userType) {
@@ -403,7 +410,7 @@ export const updateVolunteerPosition = async (req: Request, res: Response) => {
       const tokens: string[] = userInfo?.device_token;
       const userTokenMapper = mapTokensToUser(body?._id, tokens);
       const payload = {
-        title: "Profile Update",
+        title: title,
         message: messagePayload,
         data: {
           type: 1,
@@ -577,7 +584,7 @@ export const getUnverifiedVolunteers = async (req: Request, res: Response) => {
     }
     // Get all unverified volunteers from the database
     const response = await userModel.find(
-      { workSpaceId: ObjectId(workspaceId), isActive: true, userStatus: 0 },
+      { workSpaceId: ObjectId(workspaceId), isActive: true, userStatus: { $in: [0, 3] } },
       {
         otp: 0,
         otpExpireTime: 0,
