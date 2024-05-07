@@ -68,6 +68,7 @@ async function volunteerInfoByEvent(req: any, user: any): Promise<any> {
                     image: "$$userDetails.image",
                     rbsImage: "$$userDetails.rbsImage",
                     isRBSAvailable: "$$userDetails.isRBSAvailable",
+                    rbsId: "$$userDetails.RBSId",
                   },
                 },
               },
