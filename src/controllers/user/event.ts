@@ -117,9 +117,9 @@ export const getMyEvents = async (req: Request, res: Response) => {
         );
     else
       return res
-        .status(404)
+        .status(204)
         .json(
-          new apiResponse(404, responseMessage.getDataNotFound("events"), {})
+          new apiResponse(204, responseMessage.getDataNotFound("events"), {})
         );
   } catch (error) {
     return res
