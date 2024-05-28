@@ -23,7 +23,7 @@ mongoose
     dbName: "raise_funds",
   } as ConnectOptions)
   .then((data) => console.log("Database successfully connected"))
-  .then(() => console.log("Node Env: ", process.env.NODE_ENV))
+  .then(() => console.log("Node Env: ", process.env.MONGO_DB_URL))
   .then(() => console.log("DB URL: ", dbUrl))
   .catch((err) => console.log(err));
 
