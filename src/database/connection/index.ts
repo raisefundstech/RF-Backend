@@ -23,6 +23,7 @@ mongoose
     dbName: "raise_funds",
   } as ConnectOptions)
   .then((data) => console.log("Database successfully connected"))
+  .then(() => console.log("DB URL: ", dbUrl))
   .catch((err) => console.log(err));
 
 export { mongooseConnection };
