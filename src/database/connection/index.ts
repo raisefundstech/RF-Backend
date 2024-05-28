@@ -2,7 +2,7 @@ import config from 'config'
 import mongoose, { ConnectOptions } from 'mongoose'
 import express from 'express'
 const mongooseConnection = express()
-const dbUrl: any = config.get(process.env.MONGO_DB_URL);
+const dbUrl: any = config.get("db_url");
 
 mongoose.set("strictQuery", true);
 // console.log(dbUrl);
