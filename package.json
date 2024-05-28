@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc",
     "clean": "npx rimraf ./dist",
-    "start": "NODE_ENV=development node dist/server.js",
+    "start": "NODE_ENV=#{BuildVariables.env} node dist/server.js",
     "zip": "bestZip project.zip dist package.json config .platform package-lock.json",
     "server": "tsc-watch --outDir ./dist --onSuccess \"npm run start -- --mode=http\" --onFailure \"echo ERROR! Compilation Failed\""
   },
