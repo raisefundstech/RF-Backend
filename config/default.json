@@ -1,6 +1,5 @@
 {
-  "db_url_prod": "mongodb+srv://raisefundsprod:9aq0A3o9kUvJmEdq@raisefundsproduction.kdkr3th.mongodb.net/",
-  "db_url_dev": "mongodb+srv://dev_rf_db:FmgHQi5j530vE78A@cluster0.qbrcif7.mongodb.net/",
+  "db_url": "mongodb+srv://dev_rf_db:FmgHQi5j530vE78A@cluster0.qbrcif7.mongodb.net/",
   "jwt_token_secret": "seCre3t-DP_|-AsdSEF_R@!se&FunD@rtN%R^&@-enc-kEY",
   "refresh_jwt_token_secret": "seCre3t-DP_|-AsdGES&O*FunD@rtN%R^&@-enc-kEY",
   "Winston": {
