@@ -308,15 +308,15 @@ export const createEvent = async (req: Request, res: Response) => {
       );
       logger.info(userData?.length);
       let title = `New event created`;
-      const date = new Date(body.date);
       const eventDetails = await getStadiumDetailsByWorkSpace(
         response?.workSpaceId,
         response?.stadiumId
       );
-      const formattedDate = date.toLocaleString("en-US", {
-        month: "short",
-        day: "2-digit",
-      });
+      const date = moment(body.date);
+      const formattedDate = date
+        .tz("America/Los_Angeles")
+        .format("MMM DD, YYYY");
+
       let message = `New event coming up: ${eventDetails?.name} on ${formattedDate}.`;
       logger.info(message);
       const updatePromises = userData.map(async (data: any) => {
@@ -746,11 +746,10 @@ export const apply = async (req: Request, res: Response) => {
         throw new Error(result.error);
       }
 
-      const date = new Date(getEvent?.date);
-      const formattedDate = date.toLocaleString("en-US", {
-        month: "short",
-        day: "2-digit",
-      });
+      const date = moment(getEvent?.date);
+      const formattedDate = date
+        .tz("America/Los_Angeles")
+        .format("MMM DD, YYYY");
 
       const updatePromises = response.map(async (data: any) => {
         const tokens: string[] = data?.device_token;
@@ -758,9 +757,7 @@ export const apply = async (req: Request, res: Response) => {
 
         const payload = {
           title: `Applied for ${result.name}`,
-          message: `${result?.volunteerRequest.length} users, applied to ${
-            eventDetails?.name
-          }(${formattedDate}).`,
+          message: `${result?.volunteerRequest.length} users, applied to ${eventDetails?.name}(${formattedDate}).`,
           data: {
             type: 1,
             eventId: result?._clsid,
@@ -960,11 +957,11 @@ export const updateVolunteers = async (req: Request, res: Response) => {
 
         if (tokens?.length > 0) {
           userTokenMapper = await mapTokensToUser(data?.volunteerId, tokens);
-          let date = getEvent?.date;
-          const formattedDate = date?.toLocaleString("en-US", {
-            month: "short",
-            day: "2-digit",
-          });
+          const date = moment(getEvent?.date);
+          const formattedDate = date
+            .tz("America/Los_Angeles")
+            .format("MMM DD, YYYY");
+
           let userInfo = await getUser(data?.volunteerId, true);
           payload = {
             title: `Event request ${data?.requestStatus}`,
@@ -1318,20 +1315,6 @@ export const volunteerCheckIn = async (req: Request, res: Response) => {
         );
     }
 
-    // Check check-in time, admin can mark attendance 3 hours before the event or 1 hour after the event
-    // Currently commented out as per the discussion with the team
-    // const eventStartTimeUTC = moment.utc(body?.startTime);
-    // const currentTimeUTC = new Date();
-    // const threeHoursBeforeEventUTC = eventStartTimeUTC.clone().subtract(3, 'hours');
-    // const formattedBefore = threeHoursBeforeEventUTC.format('h:mm A');
-    // const oneHourAfterEventUTC = eventStartTimeUTC.clone().add(1, 'hour');
-    // const formattedAfter = oneHourAfterEventUTC.format('h:mm A');
-
-    // if (currentTimeUTC < threeHoursBeforeEventUTC || currentTimeUTC > oneHourAfterEventUTC) {
-    //     var messgae = `Invalid check-in time. Check-in starts from ${formattedBefore} and ends at ${formattedAfter}`
-    //     return res.status(400).json(new apiResponse(400, messgae, {}));
-    // }
-
     // Update check-in status for each volunteer
     const volunteersCheckInStatus = body?.volunteerRequest.map(
       async (data: any) => {
@@ -1397,21 +1380,6 @@ export const volunteerCheckOut = async (req: Request, res: Response) => {
           )
         );
     }
-    // check if the volunteer has checked-in first
-
-    // Check check-out time, admin can mark attendance 2 hours before the event or 2 hour after the event
-    // currently suspending the check-out time validation
-    // const eventStartTime = new Date(body?.endTime);
-    // const currentTime = new Date();
-    // const twoHoursBeforeEvent = new Date(eventStartTime.getTime() - (2 * 60 * 60 * 1000));
-    // const formattedBefore = twoHoursBeforeEvent.toLocaleString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true });
-    // const twoHoursAfterEvent = new Date(eventStartTime.getTime() + (1 * 60 * 60 * 1000));
-    // const formattedAfter = twoHoursAfterEvent.toLocaleString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true });
-
-    // if (currentTime < twoHoursAfterEvent || currentTime > twoHoursAfterEvent) {
-    //     var messgae = `Invalid check-out time. Check-in starts from ${formattedBefore} and ends at ${formattedAfter}`
-    //     return res.status(400).json(new apiResponse(400, messgae, {}));
-    // }
 
     // fetch event information
     const eventInfo = await eventModel.findOne({
@@ -1460,7 +1428,9 @@ export const volunteerCheckOut = async (req: Request, res: Response) => {
             userInfo?.device_token
           );
           const date = moment(eventInfo?.date);
-          const formattedDate = date.tz("America/Los_Angeles").format("MMM DD, YYYY");
+          const formattedDate = date
+            .tz("America/Los_Angeles")
+            .format("MMM DD, YYYY");
 
           let payload = {
             title: `Attendance marked`,
@@ -1514,9 +1484,7 @@ export const getVolunteersByEvent = async (req: Request, res: Response) => {
     { _id: ObjectId(user._id) },
     { userType: 1 }
   );
-  if (
-    userStatus?.userType == userRoles.VOLUNTEER
-  ) {
+  if (userStatus?.userType == userRoles.VOLUNTEER) {
     return res
       .status(403)
       .json(new apiResponse(403, responseMessage?.deniedPermission, {}));
