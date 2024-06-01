@@ -1459,11 +1459,8 @@ export const volunteerCheckOut = async (req: Request, res: Response) => {
             data?.volunteerId,
             userInfo?.device_token
           );
-          const date = new Date(eventInfo?.date);
-          const formattedDate = date.toLocaleString("en-US", {
-            month: "short",
-            day: "2-digit",
-          });
+          const date = moment(eventInfo?.date);
+          const formattedDate = date.tz("America/Los_Angeles").format("MMM DD, YYYY");
 
           let payload = {
             title: `Attendance marked`,
