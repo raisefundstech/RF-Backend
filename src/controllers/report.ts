@@ -8,9 +8,17 @@ import { eventModel, userModel } from "../database";
 import { userRoles } from "./types";
 import { getVolunteersByEvent } from "./user";
 import { volunteerInfoByEvent } from "../helpers/eventQueries";
+import { S3 } from "aws-sdk";
+import config from "config";
 
 const ObjectId = require("mongoose").Types.ObjectId;
 
+const aws: any = config.get("aws");
+const s3 = new S3({
+  accessKeyId: aws.accessKeyId,
+  secretAccessKey: aws.secretAccessKey,
+  region: aws.region,
+});
 /**
  * Retrieves Event Volunteers Report.
  *
@@ -23,23 +31,24 @@ export const getEventVolunteers = async (req: Request, res: Response) => {
   let user: any = req.header("user"),
     response: any,
     body = req.body;
-  let userStatus = await userModel.findOne(
-    { _id: ObjectId(user._id) },
-    { userType: 1 }
-  );
+  let userStatus = await userModel.findOne({ _id: ObjectId(user._id) });
   if (userStatus?.userType == userRoles.VOLUNTEER) {
     return res
       .status(403)
       .json(new apiResponse(403, responseMessage?.deniedPermission, {}));
   }
   try {
+    req.params.id = body.id;
+
     const pipeline = await volunteerInfoByEvent(req, user);
     response = await eventModel.aggregate(pipeline);
-    // If the userStatus represent the user is a volunteer delete the volunteerRequest from the response
-    if (userStatus?.userType === 0) {
-      response[0].volunteerRequest = response[0]?.volunteerRequest.filter(
-        (data: any) => data?.volunteerId?.toString() === user?._id?.toString()
-      );
+
+    if (response.length == 0) {
+      return res
+        .status(204)
+        .json(
+          new apiResponse(204, responseMessage.getDataNotFound("events"), {})
+        );
     }
 
     const workbook = new ExcelJS.Workbook();
@@ -54,15 +63,22 @@ export const getEventVolunteers = async (req: Request, res: Response) => {
       { header: "RBS Image", key: "rbsImage", width: 20 },
     ];
 
-    response[0].volunteerRequest.forEach((volunteer: any) => {
-      worksheet.addRow({
-        firstName: volunteer?.userDetails?.firstName,
-        lastName: volunteer?.userDetails?.lastName,
-        mobileNumber: volunteer?.userDetails?.mobileNumber,
-        rbsId: volunteer?.userDetails?.rbsId,
-        rbsImage: volunteer?.userDetails?.rbsImage,
+    response[0].volunteerRequest
+      .filter((v: any) => {
+        return v.requestStatus === req.body.volunteersEventStatus;
+      })
+      .forEach((volunteer: any) => {
+        worksheet.addRow({
+          firstName: volunteer?.userDetails?.firstName,
+          lastName: volunteer?.userDetails?.lastName,
+          mobileNumber: volunteer?.userDetails?.mobileNumber,
+          rbsId: volunteer?.userDetails?.rbsId,
+          rbsImage: volunteer?.userDetails?.isRBSAvailable && {
+            text: "Click to View Certificate",
+            hyperlink: volunteer?.userDetails?.rbsImage,
+          },
+        });
       });
-    });
 
     // USE This for the image url
     //userProfile?.rbsImage.replace(
@@ -71,35 +87,32 @@ export const getEventVolunteers = async (req: Request, res: Response) => {
     //);
     const xls = workbook.xlsx.writeBuffer();
 
-    // res is a Stream object
-    res.setHeader(
-      "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    );
-    res.setHeader(
-      "Content-Disposition",
-      "attachment; filename=" + "events.xlsx"
-    );
-    return workbook.xlsx.write(res).then(function () {
-      res.status(200).end();
-    });
+    let fileName = `event-volunteers-report-${new Date().getTime()}.xlsx`;
+    let s3Location;
 
-    //if (response)
-    //  return res
-    //    .status(200)
-    //    .json(
-    //      new apiResponse(
-    //        200,
-    //        responseMessage.getDataSuccess("volunteers"),
-    //        {}
-    //      )
-    //    );
-    //else
-    //  return res
-    //    .status(404)
-    //    .json(
-    //      new apiResponse(404, responseMessage.getDataNotFound("events"), {})
-    //    );
+    // write this file to AWS S3
+    workbook.xlsx.writeBuffer().then((data: any) => {
+      const params = {
+        Bucket: aws.bucket_name,
+        Key: `reports/event-volunteers-report-${new Date().getTime()}.xlsx`,
+        Body: data,
+        ContentType:
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      };
+      s3.upload(params, (err: any, data: any) => {
+        if (err) {
+          console.log("Error", err);
+        }
+        s3Location = data.Location;
+        console.log("Upload Success", data.Location);
+
+        return res.status(200).json(
+          new apiResponse(200, responseMessage.getDataSuccess("events"), {
+            s3Location,
+          })
+        );
+      });
+    });
   } catch (error) {
     return res
       .status(500)
